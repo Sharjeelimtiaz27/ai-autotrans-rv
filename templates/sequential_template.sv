@@ -1,3 +1,4 @@
+// Author: Sharjeel Imtiaz
 // sequential_template.sv
 // ai-autotrans-rv — SVA bind file skeleton for SEQUENTIAL modules
 // This file shows the expected output structure Claude must produce.

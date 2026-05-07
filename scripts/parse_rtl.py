@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Author: Sharjeel Imtiaz
 """
 Step 1A: SystemVerilog RTL Parser  ->  signals.json
 =======================================================
@@ -32,6 +33,7 @@ JSON sections
   parameters   - [name]  parameter names
   pkg_types    - enum/struct defs from pkg file, filtered to types used here
   connectivity - [{lhs, rhs, rhs_signals, source}]  signal-level dependencies
+
 """
 import re, json, argparse, sys
 from pathlib import Path
