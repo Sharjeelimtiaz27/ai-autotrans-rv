@@ -8,3 +8,5 @@ scripts/final_prompt_*.txt
 *.jf
 *.pyc
 .DS_Store
+parser.out
+parsetab.py

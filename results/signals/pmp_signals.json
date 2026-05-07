@@ -167,14 +167,16 @@
       "rhs_signals": [
         "region_start_addr",
         "pmp_req_addr_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "unused_csr_pmp_mseccfg_rlb",
       "rhs": "csr_pmp_mseccfg_i.rlb",
       "rhs_signals": [
         "csr_pmp_mseccfg_i"
-      ]
+      ],
+      "source": "assign"
     }
   ]
 }

@@ -228,14 +228,16 @@
       "rhs": "adder_result_ex_i",
       "rhs_signals": [
         "adder_result_ex_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "data_offset",
       "rhs": "data_addr[1:0]",
       "rhs_signals": [
         "data_addr"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "addr_last_d",
@@ -244,19 +246,22 @@
         "addr_incr_req_o",
         "data_addr_w_aligned",
         "data_addr"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "data_intg_err",
       "rhs": "|ecc_err",
       "rhs_signals": [
         "ecc_err"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "data_intg_err",
       "rhs": "1'b0",
-      "rhs_signals": []
+      "rhs_signals": [],
+      "source": "assign"
     },
     {
       "lhs": "split_misaligned_access",
@@ -264,28 +269,32 @@
       "rhs_signals": [
         "lsu_type_i",
         "data_offset"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "lsu_req_done_o",
       "rhs": "(lsu_req_i | (ls_fsm_cs != IDLE)) & (ls_fsm_ns == IDLE)",
       "rhs_signals": [
         "lsu_req_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "data_or_pmp_err",
       "rhs": "lsu_err_q | data_bus_err_i | pmp_err_q",
       "rhs_signals": [
         "data_bus_err_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "lsu_resp_valid_o",
       "rhs": "(data_rvalid_i | pmp_err_q) & (ls_fsm_cs == IDLE)",
       "rhs_signals": [
         "data_rvalid_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "lsu_rdata_valid_o",
@@ -293,54 +302,62 @@
       "rhs_signals": [
         "data_rvalid_i",
         "data_we_q"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "lsu_rdata_o",
       "rhs": "data_rdata_ext",
       "rhs_signals": [
         "data_rdata_ext"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "data_addr_w_aligned",
       "rhs": "{data_addr[31:2], 2'b00}",
       "rhs_signals": [
         "data_addr"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "data_addr_o",
       "rhs": "data_addr_w_aligned",
       "rhs_signals": [
         "data_addr_w_aligned"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "data_we_o",
       "rhs": "lsu_we_i",
       "rhs_signals": [
         "lsu_we_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "data_be_o",
       "rhs": "data_be",
       "rhs_signals": [
         "data_be"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "data_wdata_o",
       "rhs": "data_wdata",
       "rhs_signals": [
         "data_wdata"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "addr_last_o",
       "rhs": "addr_last_q",
-      "rhs_signals": []
+      "rhs_signals": [],
+      "source": "assign"
     },
     {
       "lhs": "load_err_o",
@@ -348,7 +365,8 @@
       "rhs_signals": [
         "data_we_q",
         "lsu_resp_valid_o"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "store_err_o",
@@ -356,7 +374,8 @@
       "rhs_signals": [
         "data_we_q",
         "lsu_resp_valid_o"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "load_resp_intg_err_o",
@@ -364,7 +383,8 @@
       "rhs_signals": [
         "data_rvalid_i",
         "data_we_q"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "store_resp_intg_err_o",
@@ -372,38 +392,306 @@
       "rhs_signals": [
         "data_rvalid_i",
         "data_we_q"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "busy_o",
       "rhs": "(ls_fsm_cs != IDLE)",
-      "rhs_signals": []
+      "rhs_signals": [],
+      "source": "assign"
     },
     {
       "lhs": "fcov_mis_rvalid_1",
       "rhs": "ls_fsm_cs inside {WAIT_RVALID_MIS, WAIT_RVALID_MIS_GNTS_DONE} &&\n                                data_rvalid_i",
       "rhs_signals": [
         "data_rvalid_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "fcov_mis_rvalid_2",
       "rhs": "ls_fsm_cs inside {IDLE} && fcov_mis_2_en_q && data_rvalid_i",
       "rhs_signals": [
         "data_rvalid_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "fcov_mis_2_en_d",
       "rhs": "fcov_mis_rvalid_2 ? 1'b0            :  \n                           fcov_mis_rvalid_1 ? 1'b1            :  \n                                               fcov_mis_2_en_q",
-      "rhs_signals": []
+      "rhs_signals": [],
+      "source": "assign"
     },
     {
       "lhs": "fcov_mis_bus_err_1_d",
       "rhs": "fcov_mis_rvalid_2                   ? 1'b0                 : \n                                fcov_mis_rvalid_1 && data_bus_err_i ? 1'b1                 : \n                                                                      fcov_mis_bus_err_1_q",
       "rhs_signals": [
         "data_bus_err_i"
-      ]
+      ],
+      "source": "assign"
+    },
+    {
+      "lhs": "data_wdata",
+      "rhs": "lsu_wdata_i[31:0]",
+      "rhs_signals": [
+        "lsu_wdata_i"
+      ],
+      "source": "always_comb"
+    },
+    {
+      "lhs": "data_wdata",
+      "rhs": "{lsu_wdata_i[23:0], lsu_wdata_i[31:24]}",
+      "rhs_signals": [
+        "lsu_wdata_i"
+      ],
+      "source": "always_comb"
+    },
+    {
+      "lhs": "data_wdata",
+      "rhs": "{lsu_wdata_i[15:0], lsu_wdata_i[31:16]}",
+      "rhs_signals": [
+        "lsu_wdata_i"
+      ],
+      "source": "always_comb"
+    },
+    {
+      "lhs": "data_wdata",
+      "rhs": "{lsu_wdata_i[ 7:0], lsu_wdata_i[31: 8]}",
+      "rhs_signals": [
+        "lsu_wdata_i"
+      ],
+      "source": "always_comb"
+    },
+    {
+      "lhs": "rdata_w_ext",
+      "rhs": "data_rdata_i[31:0]",
+      "rhs_signals": [
+        "data_rdata_i"
+      ],
+      "source": "always_comb"
+    },
+    {
+      "lhs": "rdata_w_ext",
+      "rhs": "{data_rdata_i[ 7:0], rdata_q[31:8]}",
+      "rhs_signals": [
+        "data_rdata_i",
+        "rdata_q"
+      ],
+      "source": "always_comb"
+    },
+    {
+      "lhs": "rdata_w_ext",
+      "rhs": "{data_rdata_i[15:0], rdata_q[31:16]}",
+      "rhs_signals": [
+        "data_rdata_i",
+        "rdata_q"
+      ],
+      "source": "always_comb"
+    },
+    {
+      "lhs": "rdata_w_ext",
+      "rhs": "{data_rdata_i[23:0], rdata_q[31:24]}",
+      "rhs_signals": [
+        "data_rdata_i",
+        "rdata_q"
+      ],
+      "source": "always_comb"
+    },
+    {
+      "lhs": "rdata_h_ext",
+      "rhs": "{16'h0000, data_rdata_i[15:0]}",
+      "rhs_signals": [
+        "data_rdata_i"
+      ],
+      "source": "always_comb"
+    },
+    {
+      "lhs": "rdata_h_ext",
+      "rhs": "{{16{data_rdata_i[15]}}, data_rdata_i[15:0]}",
+      "rhs_signals": [
+        "data_rdata_i"
+      ],
+      "source": "always_comb"
+    },
+    {
+      "lhs": "rdata_h_ext",
+      "rhs": "{16'h0000, data_rdata_i[23:8]}",
+      "rhs_signals": [
+        "data_rdata_i"
+      ],
+      "source": "always_comb"
+    },
+    {
+      "lhs": "rdata_h_ext",
+      "rhs": "{{16{data_rdata_i[23]}}, data_rdata_i[23:8]}",
+      "rhs_signals": [
+        "data_rdata_i"
+      ],
+      "source": "always_comb"
+    },
+    {
+      "lhs": "rdata_h_ext",
+      "rhs": "{16'h0000, data_rdata_i[31:16]}",
+      "rhs_signals": [
+        "data_rdata_i"
+      ],
+      "source": "always_comb"
+    },
+    {
+      "lhs": "rdata_h_ext",
+      "rhs": "{{16{data_rdata_i[31]}}, data_rdata_i[31:16]}",
+      "rhs_signals": [
+        "data_rdata_i"
+      ],
+      "source": "always_comb"
+    },
+    {
+      "lhs": "rdata_h_ext",
+      "rhs": "{16'h0000, data_rdata_i[7:0], rdata_q[31:24]}",
+      "rhs_signals": [
+        "data_rdata_i",
+        "rdata_q"
+      ],
+      "source": "always_comb"
+    },
+    {
+      "lhs": "rdata_h_ext",
+      "rhs": "{{16{data_rdata_i[7]}}, data_rdata_i[7:0], rdata_q[31:24]}",
+      "rhs_signals": [
+        "data_rdata_i",
+        "rdata_q"
+      ],
+      "source": "always_comb"
+    },
+    {
+      "lhs": "rdata_b_ext",
+      "rhs": "{24'h00_0000, data_rdata_i[7:0]}",
+      "rhs_signals": [
+        "data_rdata_i"
+      ],
+      "source": "always_comb"
+    },
+    {
+      "lhs": "rdata_b_ext",
+      "rhs": "{{24{data_rdata_i[7]}}, data_rdata_i[7:0]}",
+      "rhs_signals": [
+        "data_rdata_i"
+      ],
+      "source": "always_comb"
+    },
+    {
+      "lhs": "rdata_b_ext",
+      "rhs": "{24'h00_0000, data_rdata_i[15:8]}",
+      "rhs_signals": [
+        "data_rdata_i"
+      ],
+      "source": "always_comb"
+    },
+    {
+      "lhs": "rdata_b_ext",
+      "rhs": "{{24{data_rdata_i[15]}}, data_rdata_i[15:8]}",
+      "rhs_signals": [
+        "data_rdata_i"
+      ],
+      "source": "always_comb"
+    },
+    {
+      "lhs": "rdata_b_ext",
+      "rhs": "{24'h00_0000, data_rdata_i[23:16]}",
+      "rhs_signals": [
+        "data_rdata_i"
+      ],
+      "source": "always_comb"
+    },
+    {
+      "lhs": "rdata_b_ext",
+      "rhs": "{{24{data_rdata_i[23]}}, data_rdata_i[23:16]}",
+      "rhs_signals": [
+        "data_rdata_i"
+      ],
+      "source": "always_comb"
+    },
+    {
+      "lhs": "rdata_b_ext",
+      "rhs": "{24'h00_0000, data_rdata_i[31:24]}",
+      "rhs_signals": [
+        "data_rdata_i"
+      ],
+      "source": "always_comb"
+    },
+    {
+      "lhs": "rdata_b_ext",
+      "rhs": "{{24{data_rdata_i[31]}}, data_rdata_i[31:24]}",
+      "rhs_signals": [
+        "data_rdata_i"
+      ],
+      "source": "always_comb"
+    },
+    {
+      "lhs": "data_rdata_ext",
+      "rhs": "rdata_w_ext",
+      "rhs_signals": [
+        "rdata_w_ext"
+      ],
+      "source": "always_comb"
+    },
+    {
+      "lhs": "data_rdata_ext",
+      "rhs": "rdata_h_ext",
+      "rhs_signals": [
+        "rdata_h_ext"
+      ],
+      "source": "always_comb"
+    },
+    {
+      "lhs": "data_rdata_ext",
+      "rhs": "rdata_b_ext",
+      "rhs_signals": [
+        "rdata_b_ext"
+      ],
+      "source": "always_comb"
+    },
+    {
+      "lhs": "perf_load_o",
+      "rhs": "~lsu_we_i",
+      "rhs_signals": [
+        "lsu_we_i"
+      ],
+      "source": "always_comb"
+    },
+    {
+      "lhs": "perf_store_o",
+      "rhs": "lsu_we_i",
+      "rhs_signals": [
+        "lsu_we_i"
+      ],
+      "source": "always_comb"
+    },
+    {
+      "lhs": "rdata_update",
+      "rhs": "~data_we_q",
+      "rhs_signals": [
+        "data_we_q"
+      ],
+      "source": "always_comb"
+    },
+    {
+      "lhs": "addr_update",
+      "rhs": "data_gnt_i & ~(data_bus_err_i | pmp_err_q)",
+      "rhs_signals": [
+        "data_gnt_i",
+        "data_bus_err_i"
+      ],
+      "source": "always_comb"
+    },
+    {
+      "lhs": "addr_update",
+      "rhs": "~data_bus_err_i",
+      "rhs_signals": [
+        "data_bus_err_i"
+      ],
+      "source": "always_comb"
     }
   ]
 }

@@ -420,6 +420,10 @@
     {
       "name": "rvfi_flush_next",
       "width": 1
+    },
+    {
+      "name": "irq_nm_int_cause",
+      "width": "nmi_int_cause_e"
     }
   ],
   "parameters": [
@@ -461,6 +465,13 @@
         "EXC_PC_IRQ": null,
         "EXC_PC_DBD": null,
         "EXC_PC_DBG_EXC": null
+      }
+    },
+    "nmi_int_cause_e": {
+      "kind": "enum",
+      "base_type": "logic [4:0]",
+      "values": {
+        "NMI_INT_CAUSE_ECC": "5'b0"
       }
     },
     "dbg_cause_e": {
@@ -519,14 +530,16 @@
       "rhs": "load_err_i",
       "rhs_signals": [
         "load_err_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "store_err_d",
       "rhs": "store_err_i",
       "rhs_signals": [
         "store_err_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "ecall_insn",
@@ -534,7 +547,8 @@
       "rhs_signals": [
         "ecall_insn_i",
         "instr_valid_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "mret_insn",
@@ -542,7 +556,8 @@
       "rhs_signals": [
         "mret_insn_i",
         "instr_valid_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "dret_insn",
@@ -550,7 +565,8 @@
       "rhs_signals": [
         "dret_insn_i",
         "instr_valid_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "wfi_insn",
@@ -558,7 +574,8 @@
       "rhs_signals": [
         "wfi_insn_i",
         "instr_valid_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "ebrk_insn",
@@ -566,7 +583,8 @@
       "rhs_signals": [
         "ebrk_insn_i",
         "instr_valid_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "csr_pipe_flush",
@@ -574,7 +592,8 @@
       "rhs_signals": [
         "csr_pipe_flush_i",
         "instr_valid_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "instr_fetch_err",
@@ -582,14 +601,16 @@
       "rhs_signals": [
         "instr_fetch_err_i",
         "instr_valid_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "illegal_insn_d",
       "rhs": "illegal_insn_i & (ctrl_fsm_cs != FLUSH)",
       "rhs_signals": [
         "illegal_insn_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "exc_req_d",
@@ -598,7 +619,8 @@
         "ecall_insn",
         "ebrk_insn",
         "instr_fetch_err"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "exc_req_lsu",
@@ -606,14 +628,16 @@
       "rhs_signals": [
         "store_err_i",
         "load_err_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "id_exception_o",
       "rhs": "exc_req_d & ~wb_exception_o",
       "rhs_signals": [
         "wb_exception_o"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "special_req_flush_only",
@@ -621,7 +645,8 @@
       "rhs_signals": [
         "wfi_insn",
         "csr_pipe_flush"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "special_req_pc_change",
@@ -630,7 +655,8 @@
         "mret_insn",
         "dret_insn",
         "exc_req_lsu"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "special_req",
@@ -638,7 +664,8 @@
       "rhs_signals": [
         "special_req_pc_change",
         "special_req_flush_only"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "id_wb_pending",
@@ -646,7 +673,8 @@
       "rhs_signals": [
         "instr_valid_i",
         "ready_wb_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "wb_exception_o",
@@ -654,59 +682,70 @@
       "rhs_signals": [
         "load_err_i",
         "store_err_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "wb_exception_o",
       "rhs": "1'b0",
-      "rhs_signals": []
+      "rhs_signals": [],
+      "source": "assign"
     },
     {
       "lhs": "entering_nmi",
       "rhs": "nmi_mode_d & ~nmi_mode_q",
-      "rhs_signals": []
+      "rhs_signals": [],
+      "source": "assign"
     },
     {
       "lhs": "mem_resp_intg_err_irq_pending_d",
       "rhs": "(mem_resp_intg_err_irq_pending_q & ~mem_resp_intg_err_irq_clear) | mem_resp_intg_err_irq_set",
-      "rhs_signals": []
+      "rhs_signals": [],
+      "source": "assign"
     },
     {
       "lhs": "irq_nm_int",
       "rhs": "mem_resp_intg_err_irq_pending_q",
-      "rhs_signals": []
+      "rhs_signals": [],
+      "source": "assign"
     },
     {
       "lhs": "irq_nm_int_cause",
       "rhs": "NMI_INT_CAUSE_ECC",
-      "rhs_signals": []
+      "rhs_signals": [],
+      "source": "assign"
     },
     {
       "lhs": "irq_nm_int_mtval",
       "rhs": "mem_resp_intg_err_addr_q",
-      "rhs_signals": []
+      "rhs_signals": [],
+      "source": "assign"
     },
     {
       "lhs": "unused_mem_resp_intg_err_i",
       "rhs": "mem_resp_intg_err_i",
       "rhs_signals": [
         "mem_resp_intg_err_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "irq_nm_int",
       "rhs": "1'b0",
-      "rhs_signals": []
+      "rhs_signals": [],
+      "source": "assign"
     },
     {
       "lhs": "irq_nm_int_cause",
       "rhs": "nmi_int_cause_e'(0)",
-      "rhs_signals": []
+      "rhs_signals": [],
+      "source": "assign"
     },
     {
       "lhs": "irq_nm_int_mtval",
       "rhs": "'0",
-      "rhs_signals": []
+      "rhs_signals": [],
+      "source": "assign"
     },
     {
       "lhs": "do_single_step_d",
@@ -715,7 +754,8 @@
         "instr_valid_i",
         "debug_single_step_i",
         "do_single_step_q"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "enter_debug_mode_prio_d",
@@ -723,7 +763,8 @@
       "rhs_signals": [
         "debug_req_i",
         "do_single_step_d"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "enter_debug_mode",
@@ -731,7 +772,8 @@
       "rhs_signals": [
         "enter_debug_mode_prio_d",
         "trigger_match_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "ebreak_into_debug",
@@ -740,7 +782,8 @@
         "priv_mode_i",
         "debug_ebreakm_i",
         "debug_ebreaku_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "irq_nm",
@@ -748,7 +791,8 @@
       "rhs_signals": [
         "irq_nm_ext_i",
         "irq_nm_int"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "irq_enabled",
@@ -756,7 +800,8 @@
       "rhs_signals": [
         "csr_mstatus_mie_i",
         "priv_mode_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "handle_irq",
@@ -766,14 +811,16 @@
         "irq_nm",
         "irq_pending_i",
         "irq_enabled"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "unused_irq_timer",
       "rhs": "irqs_i.irq_timer",
       "rhs_signals": [
         "irqs_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "debug_cause_d",
@@ -784,29 +831,34 @@
         "ebreak_into_debug",
         "debug_req_i",
         "do_single_step_d"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "debug_cause_o",
       "rhs": "debug_cause_q",
-      "rhs_signals": []
+      "rhs_signals": [],
+      "source": "assign"
     },
     {
       "lhs": "flush_id_o",
       "rhs": "flush_id",
       "rhs_signals": [
         "flush_id"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "debug_mode_o",
       "rhs": "debug_mode_q",
-      "rhs_signals": []
+      "rhs_signals": [],
+      "source": "assign"
     },
     {
       "lhs": "nmi_mode_o",
       "rhs": "nmi_mode_q",
-      "rhs_signals": []
+      "rhs_signals": [],
+      "source": "assign"
     },
     {
       "lhs": "stall",
@@ -814,7 +866,8 @@
       "rhs_signals": [
         "stall_id_i",
         "stall_wb_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "id_in_ready_o",
@@ -823,7 +876,8 @@
         "stall",
         "halt_if",
         "retain_id"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "instr_valid_clear_o",
@@ -832,12 +886,98 @@
         "stall",
         "retain_id",
         "flush_id"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "rvfi_flush_next",
       "rhs": "ctrl_fsm_ns == FLUSH",
-      "rhs_signals": []
+      "rhs_signals": [],
+      "source": "assign"
+    },
+    {
+      "lhs": "pc_set_o",
+      "rhs": "BranchPredictor ? ~instr_bp_taken_i : 1'b1",
+      "rhs_signals": [
+        "instr_bp_taken_i"
+      ],
+      "source": "always_comb"
+    },
+    {
+      "lhs": "perf_tbranch_o",
+      "rhs": "branch_set_i",
+      "rhs_signals": [
+        "branch_set_i"
+      ],
+      "source": "always_comb"
+    },
+    {
+      "lhs": "perf_jump_o",
+      "rhs": "jump_set_i",
+      "rhs_signals": [
+        "jump_set_i"
+      ],
+      "source": "always_comb"
+    },
+    {
+      "lhs": "exc_cause_o",
+      "rhs": "irq_nm_ext_i ? ExcCauseIrqNm :\n                             '{irq_ext: 1'b0, irq_int: 1'b1, lower_cause: irq_nm_int_cause}",
+      "rhs_signals": [
+        "irq_nm_ext_i",
+        "irq_nm_int_cause"
+      ],
+      "source": "always_comb"
+    },
+    {
+      "lhs": "csr_mtval_o",
+      "rhs": "irq_nm_int_mtval",
+      "rhs_signals": [
+        "irq_nm_int_mtval"
+      ],
+      "source": "always_comb"
+    },
+    {
+      "lhs": "exc_cause_o",
+      "rhs": "'{irq_ext: 1'b1, irq_int: 1'b0, lower_cause: {1'b1, mfip_id}}",
+      "rhs_signals": [
+        "mfip_id"
+      ],
+      "source": "always_comb"
+    },
+    {
+      "lhs": "csr_mtval_o",
+      "rhs": "instr_fetch_err_plus2_i ? (pc_id_i + 32'd2) : pc_id_i",
+      "rhs_signals": [
+        "instr_fetch_err_plus2_i",
+        "pc_id_i"
+      ],
+      "source": "always_comb"
+    },
+    {
+      "lhs": "csr_mtval_o",
+      "rhs": "instr_is_compressed_i ? {16'b0, instr_compressed_i} : instr_i",
+      "rhs_signals": [
+        "instr_is_compressed_i",
+        "instr_compressed_i",
+        "instr_i"
+      ],
+      "source": "always_comb"
+    },
+    {
+      "lhs": "exc_cause_o",
+      "rhs": "(priv_mode_i == PRIV_LVL_M) ? ExcCauseEcallMMode :\n                                                          ExcCauseEcallUMode",
+      "rhs_signals": [
+        "priv_mode_i"
+      ],
+      "source": "always_comb"
+    },
+    {
+      "lhs": "csr_mtval_o",
+      "rhs": "lsu_addr_last_i",
+      "rhs_signals": [
+        "lsu_addr_last_i"
+      ],
+      "source": "always_comb"
     }
   ]
 }

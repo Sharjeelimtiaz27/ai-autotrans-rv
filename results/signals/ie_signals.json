@@ -853,6 +853,38 @@
       "width": 1
     },
     {
+      "name": "rf_wdata_sel",
+      "width": "rf_wd_sel_e"
+    },
+    {
+      "name": "alu_operator",
+      "width": "alu_op_e"
+    },
+    {
+      "name": "bt_a_mux_sel",
+      "width": "op_a_sel_e"
+    },
+    {
+      "name": "bt_b_mux_sel",
+      "width": "imm_b_sel_e"
+    },
+    {
+      "name": "imm_a_mux_sel",
+      "width": "imm_a_sel_e"
+    },
+    {
+      "name": "multdiv_operator",
+      "width": "md_op_e"
+    },
+    {
+      "name": "unused_a_mux_sel",
+      "width": "op_a_sel_e"
+    },
+    {
+      "name": "unused_b_mux_sel",
+      "width": "imm_b_sel_e"
+    },
+    {
       "name": "alu_adder_result_ext",
       "width": 34
     },
@@ -1023,6 +1055,45 @@
         "WB_INSTR_LOAD": null,
         "WB_INSTR_STORE": null,
         "WB_INSTR_OTHER": null
+      }
+    },
+    "op_a_sel_e": {
+      "kind": "enum",
+      "base_type": "logic[1:0]",
+      "values": {
+        "OP_A_REG_A": null,
+        "OP_A_FWD": null,
+        "OP_A_CURRPC": null,
+        "OP_A_IMM": null
+      }
+    },
+    "imm_a_sel_e": {
+      "kind": "enum",
+      "base_type": "logic",
+      "values": {
+        "IMM_A_Z": null,
+        "IMM_A_ZERO": null
+      }
+    },
+    "imm_b_sel_e": {
+      "kind": "enum",
+      "base_type": "logic [2:0]",
+      "values": {
+        "IMM_B_I": null,
+        "IMM_B_S": null,
+        "IMM_B_B": null,
+        "IMM_B_U": null,
+        "IMM_B_J": null,
+        "IMM_B_INCR_PC": null,
+        "IMM_B_INCR_ADDR": null
+      }
+    },
+    "rf_wd_sel_e": {
+      "kind": "enum",
+      "base_type": "logic",
+      "values": {
+        "RF_WD_EX": null,
+        "RF_WD_CSR": null
       }
     },
     "pc_sel_e": {
@@ -1256,7 +1327,8 @@
         "instr_valid_i",
         "instr_fetch_err_i",
         "illegal_insn_o"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "rf_ren_b",
@@ -1265,65 +1337,81 @@
         "instr_valid_i",
         "instr_fetch_err_i",
         "illegal_insn_o"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "rf_ren_a_o",
       "rhs": "rf_ren_a",
-      "rhs_signals": []
+      "rhs_signals": [],
+      "source": "assign"
     },
     {
       "lhs": "rf_ren_b_o",
       "rhs": "rf_ren_b",
-      "rhs_signals": []
+      "rhs_signals": [],
+      "source": "assign"
     },
     {
       "lhs": "alu_op_a_mux_sel",
       "rhs": "lsu_addr_incr_req_i ? OP_A_FWD        : alu_op_a_mux_sel_dec",
       "rhs_signals": [
         "lsu_addr_incr_req_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "alu_op_b_mux_sel",
       "rhs": "lsu_addr_incr_req_i ? OP_B_IMM        : alu_op_b_mux_sel_dec",
       "rhs_signals": [
         "lsu_addr_incr_req_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "imm_b_mux_sel",
       "rhs": "lsu_addr_incr_req_i ? IMM_B_INCR_ADDR : imm_b_mux_sel_dec",
       "rhs_signals": [
         "lsu_addr_incr_req_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "imm_a",
       "rhs": "(imm_a_mux_sel == IMM_A_Z) ? zimm_rs1_type : '0",
       "rhs_signals": [
+        "imm_a_mux_sel",
         "zimm_rs1_type"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "unused_a_mux_sel",
       "rhs": "bt_a_mux_sel",
-      "rhs_signals": []
+      "rhs_signals": [
+        "bt_a_mux_sel"
+      ],
+      "source": "assign"
     },
     {
       "lhs": "unused_b_mux_sel",
       "rhs": "bt_b_mux_sel",
-      "rhs_signals": []
+      "rhs_signals": [
+        "bt_b_mux_sel"
+      ],
+      "source": "assign"
     },
     {
       "lhs": "bt_a_operand_o",
       "rhs": "'0",
-      "rhs_signals": []
+      "rhs_signals": [],
+      "source": "assign"
     },
     {
       "lhs": "bt_b_operand_o",
       "rhs": "'0",
-      "rhs_signals": []
+      "rhs_signals": [],
+      "source": "assign"
     },
     {
       "lhs": "alu_operand_b",
@@ -1331,14 +1419,16 @@
       "rhs_signals": [
         "imm_b",
         "rf_rdata_b_fwd"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "imd_val_q_ex_o",
       "rhs": "imd_val_q",
       "rhs_signals": [
         "imd_val_q"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "rf_we_id_o",
@@ -1346,14 +1436,16 @@
       "rhs_signals": [
         "instr_executing",
         "illegal_csr_insn_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "no_flush_csr_addr",
       "rhs": "csr_addr_o inside {CSR_MSCRATCH, CSR_MEPC}",
       "rhs_signals": [
         "csr_addr_o"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "csr_pipe_flush",
@@ -1362,7 +1454,8 @@
         "csr_op_en_o",
         "csr_op_o",
         "no_flush_csr_addr"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "illegal_dret_insn",
@@ -1370,7 +1463,8 @@
       "rhs_signals": [
         "dret_insn_dec",
         "debug_mode_o"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "illegal_umode_insn",
@@ -1380,7 +1474,8 @@
         "mret_insn_dec",
         "csr_mstatus_tw_i",
         "wfi_insn_dec"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "illegal_insn_o",
@@ -1391,7 +1486,8 @@
         "illegal_csr_insn_i",
         "illegal_dret_insn",
         "illegal_umode_insn"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "mem_resp_intg_err",
@@ -1399,12 +1495,14 @@
       "rhs_signals": [
         "lsu_load_resp_intg_err_i",
         "lsu_store_resp_intg_err_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "multdiv_en_dec",
       "rhs": "mult_en_dec | div_en_dec",
-      "rhs_signals": []
+      "rhs_signals": [],
+      "source": "assign"
     },
     {
       "lhs": "lsu_req",
@@ -1412,54 +1510,62 @@
       "rhs_signals": [
         "instr_executing",
         "data_req_allowed"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "mult_en_id",
       "rhs": "instr_executing ? mult_en_dec                     : 1'b0",
       "rhs_signals": [
         "instr_executing"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "div_en_id",
       "rhs": "instr_executing ? div_en_dec                      : 1'b0",
       "rhs_signals": [
         "instr_executing"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "lsu_req_o",
       "rhs": "lsu_req",
-      "rhs_signals": []
+      "rhs_signals": [],
+      "source": "assign"
     },
     {
       "lhs": "lsu_we_o",
       "rhs": "lsu_we",
       "rhs_signals": [
         "lsu_we"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "lsu_type_o",
       "rhs": "lsu_type",
       "rhs_signals": [
         "lsu_type"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "lsu_sign_ext_o",
       "rhs": "lsu_sign_ext",
       "rhs_signals": [
         "lsu_sign_ext"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "lsu_wdata_o",
       "rhs": "rf_rdata_b_fwd",
       "rhs_signals": [
         "rf_rdata_b_fwd"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "csr_op_en_o",
@@ -1468,67 +1574,82 @@
         "csr_access_o",
         "instr_executing",
         "instr_id_done_o"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "alu_operator_ex_o",
       "rhs": "alu_operator",
-      "rhs_signals": []
+      "rhs_signals": [
+        "alu_operator"
+      ],
+      "source": "assign"
     },
     {
       "lhs": "alu_operand_a_ex_o",
       "rhs": "alu_operand_a",
       "rhs_signals": [
         "alu_operand_a"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "alu_operand_b_ex_o",
       "rhs": "alu_operand_b",
       "rhs_signals": [
         "alu_operand_b"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "mult_en_ex_o",
       "rhs": "mult_en_id",
-      "rhs_signals": []
+      "rhs_signals": [],
+      "source": "assign"
     },
     {
       "lhs": "div_en_ex_o",
       "rhs": "div_en_id",
-      "rhs_signals": []
+      "rhs_signals": [],
+      "source": "assign"
     },
     {
       "lhs": "multdiv_operator_ex_o",
       "rhs": "multdiv_operator",
-      "rhs_signals": []
+      "rhs_signals": [
+        "multdiv_operator"
+      ],
+      "source": "assign"
     },
     {
       "lhs": "multdiv_signed_mode_ex_o",
       "rhs": "multdiv_signed_mode",
       "rhs_signals": [
         "multdiv_signed_mode"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "multdiv_operand_a_ex_o",
       "rhs": "rf_rdata_a_fwd",
       "rhs_signals": [
         "rf_rdata_a_fwd"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "multdiv_operand_b_ex_o",
       "rhs": "rf_rdata_b_fwd",
       "rhs_signals": [
         "rf_rdata_b_fwd"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "branch_set_raw",
       "rhs": "branch_set_raw_d",
-      "rhs_signals": []
+      "rhs_signals": [],
+      "source": "assign"
     },
     {
       "lhs": "branch_set_raw",
@@ -1536,24 +1657,28 @@
       "rhs_signals": [
         "data_ind_timing_i",
         "branch_set_raw_q"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "branch_jump_set_done_d",
       "rhs": "(branch_set_raw | jump_set_raw | branch_jump_set_done_q) &\n    ~instr_valid_clear_o",
       "rhs_signals": [
         "instr_valid_clear_o"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "jump_set",
       "rhs": "jump_set_raw        & ~branch_jump_set_done_q",
-      "rhs_signals": []
+      "rhs_signals": [],
+      "source": "assign"
     },
     {
       "lhs": "branch_set",
       "rhs": "branch_set_raw      & ~branch_jump_set_done_q",
-      "rhs_signals": []
+      "rhs_signals": [],
+      "source": "assign"
     },
     {
       "lhs": "branch_taken",
@@ -1561,12 +1686,14 @@
       "rhs_signals": [
         "data_ind_timing_i",
         "branch_taken_q"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "branch_taken",
       "rhs": "1'b1",
-      "rhs_signals": []
+      "rhs_signals": [],
+      "source": "assign"
     },
     {
       "lhs": "nt_branch_addr_o",
@@ -1574,19 +1701,22 @@
       "rhs_signals": [
         "pc_id_i",
         "instr_is_compressed_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "nt_branch_addr_o",
       "rhs": "32'd0",
-      "rhs_signals": []
+      "rhs_signals": [],
+      "source": "assign"
     },
     {
       "lhs": "multdiv_ready_id_o",
       "rhs": "ready_wb_i",
       "rhs_signals": [
         "ready_wb_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "stall_id",
@@ -1598,7 +1728,8 @@
         "stall_jump",
         "stall_branch",
         "stall_alu"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "instr_done",
@@ -1607,21 +1738,24 @@
         "stall_id",
         "flush_id",
         "instr_executing"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "instr_first_cycle",
       "rhs": "instr_valid_i & (id_fsm_q == FIRST_CYCLE)",
       "rhs_signals": [
         "instr_valid_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "instr_first_cycle_id_o",
       "rhs": "instr_first_cycle",
       "rhs_signals": [
         "instr_first_cycle"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "multicycle_done",
@@ -1629,7 +1763,8 @@
       "rhs_signals": [
         "stall_mem",
         "ex_valid_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "outstanding_memory_access",
@@ -1638,14 +1773,16 @@
         "outstanding_load_wb_i",
         "outstanding_store_wb_i",
         "lsu_resp_valid_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "data_req_allowed",
       "rhs": "~outstanding_memory_access",
       "rhs_signals": [
         "outstanding_memory_access"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "instr_kill",
@@ -1655,7 +1792,8 @@
         "wb_exception",
         "id_exception",
         "controller_run"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "instr_executing_spec",
@@ -1665,7 +1803,8 @@
         "instr_fetch_err_i",
         "controller_run",
         "stall_ld_hz"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "instr_executing",
@@ -1675,7 +1814,8 @@
         "instr_kill",
         "stall_ld_hz",
         "outstanding_memory_access"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "stall_mem",
@@ -1684,7 +1824,8 @@
         "instr_valid_i",
         "outstanding_memory_access",
         "lsu_req_done_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "rf_rd_a_wb_match",
@@ -1692,7 +1833,8 @@
       "rhs_signals": [
         "rf_waddr_wb_i",
         "rf_raddr_a_o"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "rf_rd_b_wb_match",
@@ -1700,35 +1842,40 @@
       "rhs_signals": [
         "rf_waddr_wb_i",
         "rf_raddr_b_o"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "rf_rd_a_wb_match_o",
       "rhs": "rf_rd_a_wb_match",
       "rhs_signals": [
         "rf_rd_a_wb_match"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "rf_rd_b_wb_match_o",
       "rhs": "rf_rd_b_wb_match",
       "rhs_signals": [
         "rf_rd_b_wb_match"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "rf_rd_a_hz",
       "rhs": "rf_rd_a_wb_match & rf_ren_a",
       "rhs_signals": [
         "rf_rd_a_wb_match"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "rf_rd_b_hz",
       "rhs": "rf_rd_b_wb_match & rf_ren_b",
       "rhs_signals": [
         "rf_rd_b_wb_match"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "rf_rdata_a_fwd",
@@ -1738,7 +1885,8 @@
         "rf_write_wb_i",
         "rf_wdata_fwd_wb_i",
         "rf_rdata_a_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "rf_rdata_b_fwd",
@@ -1748,7 +1896,8 @@
         "rf_write_wb_i",
         "rf_wdata_fwd_wb_i",
         "rf_rdata_b_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "stall_ld_hz",
@@ -1757,14 +1906,16 @@
         "outstanding_load_wb_i",
         "rf_rd_a_hz",
         "rf_rd_b_hz"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "instr_type_wb_o",
       "rhs": "~lsu_req_dec ? WB_INSTR_OTHER :\n                              lsu_we      ? WB_INSTR_STORE :\n                                            WB_INSTR_LOAD",
       "rhs_signals": [
         "lsu_we"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "instr_id_done_o",
@@ -1772,7 +1923,8 @@
       "rhs_signals": [
         "en_wb_o",
         "ready_wb_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "stall_wb",
@@ -1780,7 +1932,8 @@
       "rhs_signals": [
         "en_wb_o",
         "ready_wb_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "perf_dside_wait_o",
@@ -1790,17 +1943,20 @@
         "instr_kill",
         "outstanding_memory_access",
         "stall_ld_hz"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "expecting_load_resp_o",
       "rhs": "1'b0",
-      "rhs_signals": []
+      "rhs_signals": [],
+      "source": "assign"
     },
     {
       "lhs": "expecting_store_resp_o",
       "rhs": "1'b0",
-      "rhs_signals": []
+      "rhs_signals": [],
+      "source": "assign"
     },
     {
       "lhs": "multicycle_done",
@@ -1808,14 +1964,16 @@
       "rhs_signals": [
         "lsu_resp_valid_i",
         "ex_valid_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "data_req_allowed",
       "rhs": "instr_first_cycle",
       "rhs_signals": [
         "instr_first_cycle"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "stall_mem",
@@ -1824,12 +1982,14 @@
         "instr_valid_i",
         "lsu_resp_valid_i",
         "instr_first_cycle"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "stall_ld_hz",
       "rhs": "1'b0",
-      "rhs_signals": []
+      "rhs_signals": [],
+      "source": "assign"
     },
     {
       "lhs": "instr_executing_spec",
@@ -1838,38 +1998,44 @@
         "instr_valid_i",
         "instr_fetch_err_i",
         "controller_run"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "instr_executing",
       "rhs": "instr_executing_spec",
       "rhs_signals": [
         "instr_executing_spec"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "rf_rdata_a_fwd",
       "rhs": "rf_rdata_a_i",
       "rhs_signals": [
         "rf_rdata_a_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "rf_rdata_b_fwd",
       "rhs": "rf_rdata_b_i",
       "rhs_signals": [
         "rf_rdata_b_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "rf_rd_a_wb_match_o",
       "rhs": "1'b0",
-      "rhs_signals": []
+      "rhs_signals": [],
+      "source": "assign"
     },
     {
       "lhs": "rf_rd_b_wb_match_o",
       "rhs": "1'b0",
-      "rhs_signals": []
+      "rhs_signals": [],
+      "source": "assign"
     },
     {
       "lhs": "expecting_load_resp_o",
@@ -1878,7 +2044,8 @@
         "instr_valid_i",
         "instr_first_cycle",
         "lsu_we"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "expecting_store_resp_o",
@@ -1887,73 +2054,84 @@
         "instr_valid_i",
         "instr_first_cycle",
         "lsu_we"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "unused_data_req_done_ex",
       "rhs": "lsu_req_done_i",
       "rhs_signals": [
         "lsu_req_done_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "unused_rf_waddr_wb",
       "rhs": "rf_waddr_wb_i",
       "rhs_signals": [
         "rf_waddr_wb_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "unused_rf_write_wb",
       "rhs": "rf_write_wb_i",
       "rhs_signals": [
         "rf_write_wb_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "unused_outstanding_load_wb",
       "rhs": "outstanding_load_wb_i",
       "rhs_signals": [
         "outstanding_load_wb_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "unused_outstanding_store_wb",
       "rhs": "outstanding_store_wb_i",
       "rhs_signals": [
         "outstanding_store_wb_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "unused_wb_exception",
       "rhs": "wb_exception",
       "rhs_signals": [
         "wb_exception"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "unused_rf_wdata_fwd_wb",
       "rhs": "rf_wdata_fwd_wb_i",
       "rhs_signals": [
         "rf_wdata_fwd_wb_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "unused_id_exception",
       "rhs": "id_exception",
       "rhs_signals": [
         "id_exception"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "instr_type_wb_o",
       "rhs": "WB_INSTR_OTHER",
-      "rhs_signals": []
+      "rhs_signals": [],
+      "source": "assign"
     },
     {
       "lhs": "stall_wb",
       "rhs": "1'b0",
-      "rhs_signals": []
+      "rhs_signals": [],
+      "source": "assign"
     },
     {
       "lhs": "perf_dside_wait_o",
@@ -1961,14 +2139,16 @@
       "rhs_signals": [
         "instr_executing",
         "lsu_resp_valid_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "instr_id_done_o",
       "rhs": "instr_done",
       "rhs_signals": [
         "instr_done"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "instr_perf_count_id_o",
@@ -1979,28 +2159,217 @@
         "illegal_insn_dec",
         "illegal_csr_insn_i",
         "instr_fetch_err_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "en_wb_o",
       "rhs": "instr_done",
       "rhs_signals": [
         "instr_done"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "perf_mul_wait_o",
       "rhs": "stall_multdiv & mult_en_dec",
       "rhs_signals": [
         "stall_multdiv"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "perf_div_wait_o",
       "rhs": "stall_multdiv & div_en_dec",
       "rhs_signals": [
         "stall_multdiv"
-      ]
+      ],
+      "source": "assign"
+    },
+    {
+      "lhs": "alu_operand_a",
+      "rhs": "rf_rdata_a_fwd",
+      "rhs_signals": [
+        "rf_rdata_a_fwd"
+      ],
+      "source": "always_comb"
+    },
+    {
+      "lhs": "alu_operand_a",
+      "rhs": "lsu_addr_last_i",
+      "rhs_signals": [
+        "lsu_addr_last_i"
+      ],
+      "source": "always_comb"
+    },
+    {
+      "lhs": "alu_operand_a",
+      "rhs": "pc_id_i",
+      "rhs_signals": [
+        "pc_id_i"
+      ],
+      "source": "always_comb"
+    },
+    {
+      "lhs": "alu_operand_a",
+      "rhs": "imm_a",
+      "rhs_signals": [
+        "imm_a"
+      ],
+      "source": "always_comb"
+    },
+    {
+      "lhs": "bt_a_operand_o",
+      "rhs": "rf_rdata_a_fwd",
+      "rhs_signals": [
+        "rf_rdata_a_fwd"
+      ],
+      "source": "always_comb"
+    },
+    {
+      "lhs": "bt_a_operand_o",
+      "rhs": "pc_id_i",
+      "rhs_signals": [
+        "pc_id_i"
+      ],
+      "source": "always_comb"
+    },
+    {
+      "lhs": "bt_b_operand_o",
+      "rhs": "imm_i_type",
+      "rhs_signals": [
+        "imm_i_type"
+      ],
+      "source": "always_comb"
+    },
+    {
+      "lhs": "bt_b_operand_o",
+      "rhs": "imm_b_type",
+      "rhs_signals": [
+        "imm_b_type"
+      ],
+      "source": "always_comb"
+    },
+    {
+      "lhs": "bt_b_operand_o",
+      "rhs": "imm_j_type",
+      "rhs_signals": [
+        "imm_j_type"
+      ],
+      "source": "always_comb"
+    },
+    {
+      "lhs": "bt_b_operand_o",
+      "rhs": "instr_is_compressed_i ? 32'h2 : 32'h4",
+      "rhs_signals": [
+        "instr_is_compressed_i"
+      ],
+      "source": "always_comb"
+    },
+    {
+      "lhs": "imm_b",
+      "rhs": "imm_i_type",
+      "rhs_signals": [
+        "imm_i_type"
+      ],
+      "source": "always_comb"
+    },
+    {
+      "lhs": "imm_b",
+      "rhs": "imm_s_type",
+      "rhs_signals": [
+        "imm_s_type"
+      ],
+      "source": "always_comb"
+    },
+    {
+      "lhs": "imm_b",
+      "rhs": "imm_u_type",
+      "rhs_signals": [
+        "imm_u_type"
+      ],
+      "source": "always_comb"
+    },
+    {
+      "lhs": "imm_b",
+      "rhs": "instr_is_compressed_i ? 32'h2 : 32'h4",
+      "rhs_signals": [
+        "instr_is_compressed_i"
+      ],
+      "source": "always_comb"
+    },
+    {
+      "lhs": "imm_b",
+      "rhs": "imm_b_type",
+      "rhs_signals": [
+        "imm_b_type"
+      ],
+      "source": "always_comb"
+    },
+    {
+      "lhs": "imm_b",
+      "rhs": "imm_j_type",
+      "rhs_signals": [
+        "imm_j_type"
+      ],
+      "source": "always_comb"
+    },
+    {
+      "lhs": "rf_wdata_id_o",
+      "rhs": "result_ex_i",
+      "rhs_signals": [
+        "result_ex_i"
+      ],
+      "source": "always_comb"
+    },
+    {
+      "lhs": "rf_wdata_id_o",
+      "rhs": "csr_rdata_i",
+      "rhs_signals": [
+        "csr_rdata_i"
+      ],
+      "source": "always_comb"
+    },
+    {
+      "lhs": "stall_branch",
+      "rhs": "(~BranchTargetALU & branch_decision_i) | data_ind_timing_i",
+      "rhs_signals": [
+        "branch_decision_i",
+        "data_ind_timing_i"
+      ],
+      "source": "always_comb"
+    },
+    {
+      "lhs": "branch_not_set",
+      "rhs": "~branch_decision_i",
+      "rhs_signals": [
+        "branch_decision_i"
+      ],
+      "source": "always_comb"
+    },
+    {
+      "lhs": "stall_multdiv",
+      "rhs": "multdiv_en_dec",
+      "rhs_signals": [
+        "multdiv_en_dec"
+      ],
+      "source": "always_comb"
+    },
+    {
+      "lhs": "stall_branch",
+      "rhs": "branch_in_dec",
+      "rhs_signals": [
+        "branch_in_dec"
+      ],
+      "source": "always_comb"
+    },
+    {
+      "lhs": "stall_jump",
+      "rhs": "jump_in_dec",
+      "rhs_signals": [
+        "jump_in_dec"
+      ],
+      "source": "always_comb"
     },
     {
       "lhs": "multdiv_sel",
@@ -2008,12 +2377,14 @@
       "rhs_signals": [
         "mult_sel_i",
         "div_sel_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "multdiv_sel",
       "rhs": "1'b0",
-      "rhs_signals": []
+      "rhs_signals": [],
+      "source": "assign"
     },
     {
       "lhs": "imd_val_we_o",
@@ -2022,26 +2393,30 @@
         "multdiv_sel",
         "multdiv_imd_val_we",
         "alu_imd_val_we"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "alu_imd_val_q",
       "rhs": "'{imd_val_q_i[0][31:0], imd_val_q_i[1][31:0]}",
       "rhs_signals": [
         "imd_val_q_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "result_ex_o",
       "rhs": "multdiv_sel ? multdiv_result : alu_result",
       "rhs_signals": [
         "multdiv_sel"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "branch_decision_o",
       "rhs": "alu_cmp_result",
-      "rhs_signals": []
+      "rhs_signals": [],
+      "source": "assign"
     },
     {
       "lhs": "bt_alu_result",
@@ -2049,42 +2424,48 @@
       "rhs_signals": [
         "bt_a_operand_i",
         "bt_b_operand_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "unused_bt_carry",
       "rhs": "bt_alu_result[32]",
       "rhs_signals": [
         "bt_alu_result"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "branch_target_o",
       "rhs": "bt_alu_result[31:0]",
       "rhs_signals": [
         "bt_alu_result"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "unused_bt_a_operand",
       "rhs": "bt_a_operand_i",
       "rhs_signals": [
         "bt_a_operand_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "unused_bt_b_operand",
       "rhs": "bt_b_operand_i",
       "rhs_signals": [
         "bt_b_operand_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "branch_target_o",
       "rhs": "alu_adder_result_ex_o",
       "rhs_signals": [
         "alu_adder_result_ex_o"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "ex_valid_o",
@@ -2093,29 +2474,34 @@
         "multdiv_sel",
         "multdiv_valid",
         "alu_imd_val_we"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "sva_multdiv_fsm_idle",
       "rhs": "gen_multdiv_slow.multdiv_i.sva_fsm_idle",
-      "rhs_signals": []
+      "rhs_signals": [],
+      "source": "assign"
     },
     {
       "lhs": "sva_multdiv_fsm_idle",
       "rhs": "gen_multdiv_fast.multdiv_i.sva_fsm_idle",
-      "rhs_signals": []
+      "rhs_signals": [],
+      "source": "assign"
     },
     {
       "lhs": "sva_multdiv_fsm_idle",
       "rhs": "1'b1",
-      "rhs_signals": []
+      "rhs_signals": [],
+      "source": "assign"
     },
     {
       "lhs": "unused_sva_multdiv_fsm_idle",
       "rhs": "sva_multdiv_fsm_idle",
       "rhs_signals": [
         "sva_multdiv_fsm_idle"
-      ]
+      ],
+      "source": "assign"
     }
   ]
 }

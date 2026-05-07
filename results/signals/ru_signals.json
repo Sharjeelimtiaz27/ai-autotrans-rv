@@ -192,6 +192,14 @@
     {
       "name": "unused_pc_id",
       "width": 32
+    },
+    {
+      "name": "wb_instr_type_q",
+      "width": "wb_instr_type_e"
+    },
+    {
+      "name": "unused_instr_type_wb",
+      "width": "wb_instr_type_e"
     }
   ],
   "parameters": [
@@ -222,21 +230,25 @@
         "ready_wb_o",
         "wb_valid_q",
         "wb_done"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "wb_done",
       "rhs": "(wb_instr_type_q == WB_INSTR_OTHER) | lsu_resp_valid_i",
       "rhs_signals": [
+        "wb_instr_type_q",
         "lsu_resp_valid_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "rf_waddr_wb_o",
       "rhs": "rf_waddr_wb_q",
       "rhs_signals": [
         "rf_waddr_wb_q"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "ready_wb_o",
@@ -244,36 +256,44 @@
       "rhs_signals": [
         "wb_valid_q",
         "wb_done"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "rf_write_wb_o",
       "rhs": "wb_valid_q & (rf_we_wb_q | (wb_instr_type_q == WB_INSTR_LOAD))",
       "rhs_signals": [
         "wb_valid_q",
-        "rf_we_wb_q"
-      ]
+        "rf_we_wb_q",
+        "wb_instr_type_q"
+      ],
+      "source": "assign"
     },
     {
       "lhs": "outstanding_load_wb_o",
       "rhs": "wb_valid_q & (wb_instr_type_q == WB_INSTR_LOAD)",
       "rhs_signals": [
-        "wb_valid_q"
-      ]
+        "wb_valid_q",
+        "wb_instr_type_q"
+      ],
+      "source": "assign"
     },
     {
       "lhs": "outstanding_store_wb_o",
       "rhs": "wb_valid_q & (wb_instr_type_q == WB_INSTR_STORE)",
       "rhs_signals": [
-        "wb_valid_q"
-      ]
+        "wb_valid_q",
+        "wb_instr_type_q"
+      ],
+      "source": "assign"
     },
     {
       "lhs": "pc_wb_o",
       "rhs": "wb_pc_q",
       "rhs_signals": [
         "wb_pc_q"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "instr_done_wb_o",
@@ -281,14 +301,16 @@
       "rhs_signals": [
         "wb_valid_q",
         "wb_done"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "perf_instr_ret_wb_spec_o",
       "rhs": "wb_count_q",
       "rhs_signals": [
         "wb_count_q"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "perf_instr_ret_compressed_wb_spec_o",
@@ -296,7 +318,8 @@
       "rhs_signals": [
         "perf_instr_ret_wb_spec_o",
         "wb_compressed_q"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "perf_instr_ret_wb_o",
@@ -306,7 +329,8 @@
         "wb_count_q",
         "lsu_resp_valid_i",
         "lsu_resp_err_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "perf_instr_ret_compressed_wb_o",
@@ -314,57 +338,66 @@
       "rhs_signals": [
         "perf_instr_ret_wb_o",
         "wb_compressed_q"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "rf_wdata_fwd_wb_o",
       "rhs": "rf_wdata_wb_q",
       "rhs_signals": [
         "rf_wdata_wb_q"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "dummy_instr_wb_o",
       "rhs": "dummy_instr_wb_q",
       "rhs_signals": [
         "dummy_instr_wb_q"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "unused_dummy_instr_id",
       "rhs": "dummy_instr_id_i",
       "rhs_signals": [
         "dummy_instr_id_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "dummy_instr_wb_o",
       "rhs": "1'b0",
-      "rhs_signals": []
+      "rhs_signals": [],
+      "source": "assign"
     },
     {
       "lhs": "rf_waddr_wb_o",
       "rhs": "rf_waddr_id_i",
       "rhs_signals": [
         "rf_waddr_id_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "dummy_instr_wb_o",
       "rhs": "dummy_instr_id_i",
       "rhs_signals": [
         "dummy_instr_id_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "perf_instr_ret_wb_spec_o",
       "rhs": "1'b0",
-      "rhs_signals": []
+      "rhs_signals": [],
+      "source": "assign"
     },
     {
       "lhs": "perf_instr_ret_compressed_wb_spec_o",
       "rhs": "1'b0",
-      "rhs_signals": []
+      "rhs_signals": [],
+      "source": "assign"
     },
     {
       "lhs": "perf_instr_ret_wb_o",
@@ -374,7 +407,8 @@
         "en_wb_i",
         "lsu_resp_valid_i",
         "lsu_resp_err_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "perf_instr_ret_compressed_wb_o",
@@ -382,77 +416,82 @@
       "rhs_signals": [
         "perf_instr_ret_wb_o",
         "instr_is_compressed_id_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "ready_wb_o",
       "rhs": "1'b1",
-      "rhs_signals": []
+      "rhs_signals": [],
+      "source": "assign"
     },
     {
       "lhs": "unused_clk",
       "rhs": "clk_i",
       "rhs_signals": [
         "clk_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "unused_rst",
       "rhs": "rst_ni",
       "rhs_signals": [
         "rst_ni"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "unused_instr_type_wb",
       "rhs": "instr_type_wb_i",
       "rhs_signals": [
         "instr_type_wb_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "unused_pc_id",
       "rhs": "pc_id_i",
       "rhs_signals": [
         "pc_id_i"
-      ]
-    },
-    {
-      "lhs": "unused_dummy_instr_id",
-      "rhs": "dummy_instr_id_i",
-      "rhs_signals": [
-        "dummy_instr_id_i"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "outstanding_load_wb_o",
       "rhs": "1'b0",
-      "rhs_signals": []
+      "rhs_signals": [],
+      "source": "assign"
     },
     {
       "lhs": "outstanding_store_wb_o",
       "rhs": "1'b0",
-      "rhs_signals": []
+      "rhs_signals": [],
+      "source": "assign"
     },
     {
       "lhs": "pc_wb_o",
       "rhs": "'0",
-      "rhs_signals": []
+      "rhs_signals": [],
+      "source": "assign"
     },
     {
       "lhs": "rf_write_wb_o",
       "rhs": "1'b0",
-      "rhs_signals": []
+      "rhs_signals": [],
+      "source": "assign"
     },
     {
       "lhs": "rf_wdata_fwd_wb_o",
       "rhs": "32'b0",
-      "rhs_signals": []
+      "rhs_signals": [],
+      "source": "assign"
     },
     {
       "lhs": "instr_done_wb_o",
       "rhs": "1'b0",
-      "rhs_signals": []
+      "rhs_signals": [],
+      "source": "assign"
     },
     {
       "lhs": "rf_wdata_wb_o",
@@ -460,14 +499,16 @@
       "rhs_signals": [
         "rf_wdata_wb_mux_we",
         "rf_wdata_wb_mux"
-      ]
+      ],
+      "source": "assign"
     },
     {
       "lhs": "rf_we_wb_o",
       "rhs": "|rf_wdata_wb_mux_we",
       "rhs_signals": [
         "rf_wdata_wb_mux_we"
-      ]
+      ],
+      "source": "assign"
     }
   ]
 }
