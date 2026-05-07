@@ -60,7 +60,7 @@ SVA bind file candidate  +  TAR log
 compiled bind file
     │
     ▼ 1E: build_wrapper.py
-assertions/translated/MODULE_bind.sv
+assertions/MODULE_bind.sv
     │
     ▼ 1F: validate_fpv.py (JasperGold FPV — Proven + non-vacuous)
 results/step1/MODULE_fpv_baseline.txt
@@ -106,17 +106,6 @@ ai-autotrans-rv/
 │   ├── sequential_prompt.txt
 │   └── combinational_prompt.txt
 │
-├── pipeline/                        ← Python scripts + runtime data
-│   ├── run_step1.py                 ← master orchestrator
-│   ├── parse_rtl.py                 ← 1A: pyverilog RTL parser
-│   ├── build_prompt.py              ← 1B: prompt builder
-│   ├── translate.py                 ← 1C: Claude Code CLI
-│   ├── validate_compile.py          ← 1D: QuestaSim compile loop
-│   ├── build_wrapper.py             ← 1E: bind wrapper
-│   ├── validate_fpv.py              ← 1F: JasperGold FPV baseline
-│   ├── signals/                     ← MODULE_signals.json (gitignored)
-│   └── logs/                        ← MODULE_tar_log.json (TAR data)
-│
 ├── rtl/
 │   └── ibex/
 │       ├── original/                ← clean Ibex RTL (parser input — never modify)
@@ -125,8 +114,6 @@ ai-autotrans-rv/
 ├── assertion_dataset/               ← NS31A source CSV files (one per module)
 │
 ├── assertions/                      ← SVA bind files (pipeline output)
-│
-├── jasper_tcl/                      ← TCL scripts for JasperGold FPV + QuestaSim
 │
 ├── results/
 │   └── step1/                       ← FPV reports, vacuity, COV files
@@ -148,22 +135,18 @@ pip install pyverilog pandas
 # Place NS31A CSVs in assertion_dataset/
 
 # Laptop: parse + translate (no licences needed)
-python pipeline/run_step1.py --module pmp --mode local
-python pipeline/run_step1.py --module csr --mode local
+python run_step1.py --module pmp --mode local
+python run_step1.py --module csr --mode local
 
 # Server: compile + FPV (QuestaSim + JasperGold licences required)
 git pull
-python pipeline/run_step1.py --module pmp --mode server
+python run_step1.py --module pmp --mode server
 
 # All 9 modules
-python pipeline/run_step1.py --all-modules
+python run_step1.py --all-modules
 
 # Status check
-python pipeline/run_step1.py --status
-
-# Compute metrics
-python metrics/compute_tar.py
-python metrics/compute_satr.py
+python run_step1.py --status
 ```
 
 ---
@@ -172,14 +155,14 @@ python metrics/compute_satr.py
 
 ```bash
 # Laptop (parse + translate — no licences)
-python pipeline/run_step1.py --module csr --mode local
-git add pipeline/logs/ assertions/translated/
+python run_step1.py --module csr --mode local
+git add assertions/ logs/
 git commit -m "ATS local: csr translated"
 git push
 
 # Server (QuestaSim + JasperGold)
 git pull
-python pipeline/run_step1.py --module csr --mode server
+python run_step1.py --module csr --mode server
 git add results/ errors/
 git commit -m "ATS server: csr validated"
 git push
