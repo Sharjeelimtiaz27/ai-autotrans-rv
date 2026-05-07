@@ -1,0 +1,8 @@
+.claude/
+pipeline/signals/
+**/__pycache__/
+*.log
+*.jdb
+*.jf
+*.pyc
+.DS_Store

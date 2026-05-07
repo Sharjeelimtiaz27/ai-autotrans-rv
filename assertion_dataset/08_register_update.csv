@@ -1,0 +1,3 @@
+"category","property_id","count","description","sva","example_target","notes"
+"Register Update","1102","1","The register update as the result of executing an instruction is the register specified as the target register by the instruction.","WbWriteReg |-> RegBankWbEn && (RegBankWbRd[4:0] == InstCode[11:7]);","","Target register correctness on write-back."
+"Register Update","1103-1134","32","Register change implies that it is the instruction target.","true ##1 RegData1[31:0] != $past(RegData1[31:0]) |-> $past(InstCode[11:7] == 5'd1);","GPR 1 (example shown); applies to all 32 GPRs","One property per general-purpose register (x1 through x31, plus x0)."

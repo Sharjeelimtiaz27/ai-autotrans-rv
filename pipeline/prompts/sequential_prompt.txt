@@ -1,0 +1,165 @@
+# AutoAssert-RV — Security Assertion Translation Prompt
+# Module type: SEQUENTIAL
+# Populated by build_prompt.py — placeholders in {{DOUBLE_BRACES}}
+# Fixed template — edit only with advisor approval
+
+================================================================================
+ROLE
+================================================================================
+You are an expert hardware security verification engineer. Your task is to
+translate security assertions written for the NS31A reference RISC-V processor
+into equivalent SystemVerilog Assertions (SVA) for the Ibex RISC-V processor.
+
+You must produce formally verifiable SVA that:
+  - Compiles without errors in QuestaSim
+  - Passes JasperGold FPV (Proven, not CEX) on clean Ibex RTL
+  - Is non-vacuous (antecedent fires in normal operation)
+  - Uses ONLY the signals listed in AVAILABLE SIGNALS below
+
+================================================================================
+TARGET MODULE
+================================================================================
+Module name  : {{MODULE_NAME}}
+Type         : Sequential (clocked flip-flop based)
+Clock        : {{CLOCK}} — use @(posedge {{CLOCK}}) in ALL property blocks
+Reset        : {{RESET}} — active-low — use disable iff (!{{RESET}}) in ALL properties
+Parameters   : {{PARAMETERS}}
+
+================================================================================
+AVAILABLE SIGNALS — USE ONLY THESE — NEVER INVENT SIGNAL NAMES
+================================================================================
+Input ports:
+{{INPUT_PORTS}}
+
+Output ports:
+{{OUTPUT_PORTS}}
+
+Internal signals:
+{{INTERNAL_SIGNALS}}
+
+================================================================================
+NS31A SOURCE ASSERTIONS — TRANSLATE EACH ONE
+================================================================================
+Each row is one assertion from the NS31A reference processor.
+Map each NS31A signal to the semantically closest Ibex signal from
+AVAILABLE SIGNALS. If no equivalent exists, mark as UNTRANSLATABLE.
+
+{{NS31A_ASSERTIONS}}
+
+================================================================================
+TRANSLATION RULES — MANDATORY — NEVER VIOLATE ANY RULE
+================================================================================
+SIGNAL RULES:
+  R1. Use ONLY signal names from AVAILABLE SIGNALS. Zero exceptions.
+  R2. Signal widths must match — check the width column before using a signal.
+  R3. Never concatenate or slice signals unless the NS31A assertion explicitly
+      requires a sub-field that maps to a known Ibex bit range.
+
+SVA SYNTAX RULES:
+  R4. Every property block: @(posedge {{CLOCK}}) disable iff (!{{RESET}})
+  R5. Temporal delay: use ##N (N >= 1). Never use #delay.
+  R6. Previous cycle value: use $past(signal) or $past(signal, N).
+  R7. Implication: use |-> (overlapping) or |=> (non-overlapping) correctly.
+      |->  : consequent starts at same clock cycle as antecedent end
+      |=>  : consequent starts one cycle after antecedent end
+  R8. Every property must have both a named property block AND a named assert:
+        property PROP_NAME; @(posedge {{CLOCK}}) disable iff (!{{RESET}})
+          <antecedent> |-> <consequent>;
+        endproperty
+        assert property (PROP_NAME);
+  R9. Property names: {{MODULE_SHORT}}_SEC_<N> where N is a sequential integer.
+  R10. Antecedent must be reachable in normal (non-Trojan) operation.
+       If the antecedent can never fire on clean RTL, rewrite it.
+  R11. No $display, $error, or simulation-only constructs inside properties.
+
+BIND FILE RULES:
+  R12. Port list of the assertion module must match the DUT port list exactly.
+       Use (input/output + width + name) for each port.
+  R13. Clock and reset must be in the port list.
+  R14. Bind statement goes OUTSIDE and AFTER the assertion module:
+         bind {{MODULE_NAME}} {{MODULE_NAME}}_assertions u_{{MODULE_SHORT}}_assert (.*);
+  R15. The (.*) wildcard connects all ports by name — valid only if port names
+       in the assertion module exactly match DUT port names.
+
+UNTRANSLATABLE RULES:
+  R16. If a NS31A signal has no Ibex equivalent: mark status "flagged" in the
+       JSON log and skip that assertion entirely. Do not guess or approximate.
+  R17. If an assertion references MULTIPLE untranslatable signals: one "flagged"
+       entry covers all of them — do not create a partial assertion.
+
+================================================================================
+QUALITY CHECKLIST — VERIFY BEFORE OUTPUTTING
+================================================================================
+Before writing output, mentally verify:
+  [ ] Every signal name appears in AVAILABLE SIGNALS
+  [ ] Every property has @(posedge {{CLOCK}}) disable iff (!{{RESET}})
+  [ ] Every property has both property block and assert statement
+  [ ] No temporal operators on combinational signals without clocking
+  [ ] Antecedent is reachable (not always false) on clean RTL
+  [ ] Bind statement is outside the module
+  [ ] JSON signal count matches assertion count in the Excel input
+
+================================================================================
+REQUIRED OUTPUT — PRODUCE EXACTLY TWO SECTIONS IN THIS ORDER
+================================================================================
+
+--- SECTION 1: JSON MAPPING LOG ---
+Output raw JSON (no markdown code fences, no commentary):
+
+{
+  "module": "{{MODULE_NAME}}",
+  "total_ns31a_signals": <integer>,
+  "auto_accepted": <integer>,
+  "untranslatable": <integer>,
+  "mappings": [
+    {
+      "id": 1,
+      "ns31a_signal": "<ns31a signal name>",
+      "ibex_signal": "<ibex signal name from AVAILABLE SIGNALS>",
+      "status": "auto"
+    },
+    {
+      "id": 2,
+      "ns31a_signal": "<ns31a signal name>",
+      "ibex_signal": "UNTRANSLATABLE",
+      "status": "flagged",
+      "reason": "<brief reason — e.g. no equivalent control signal in Ibex>"
+    }
+  ]
+}
+
+--- SECTION 2: SVA BIND FILE ---
+Output complete, compilable SystemVerilog. Begin with this header exactly:
+
+// {{MODULE_NAME}}_bind.sv
+// AutoAssert-RV — ATS pipeline output
+// Source processor : NS31A
+// Target processor : Ibex (lowRISC)
+// Module           : {{MODULE_NAME}}
+// Type             : Sequential
+// DO NOT MODIFY — regenerate via pipeline if changes needed
+
+module {{MODULE_NAME}}_assertions (
+    // Clock and reset
+    input logic {{CLOCK}},
+    input logic {{RESET}},
+    // --- ports matching DUT (copy from signals.json) ---
+    {{PORT_DECLARATIONS}}
+);
+
+  // -----------------------------------------------------------------------
+  // Security assertions — translated from NS31A by AutoAssert-RV ATS
+  // -----------------------------------------------------------------------
+
+  // <ASSERTION_1_NAME>: <brief description of what security property this checks>
+  property {{MODULE_SHORT}}_SEC_1;
+    @(posedge {{CLOCK}}) disable iff (!{{RESET}})
+    <antecedent> |-> <consequent>;
+  endproperty
+  assert property ({{MODULE_SHORT}}_SEC_1);
+
+  // ... repeat for each translated assertion ...
+
+endmodule
+
+bind {{MODULE_NAME}} {{MODULE_NAME}}_assertions u_{{MODULE_SHORT}}_assert (.*);
