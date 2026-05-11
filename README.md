@@ -418,6 +418,21 @@ Funded by the Estonian Research Council grant **PSG837**.
 
 ---
 
+## Development Tools
+
+| Tool | Role |
+|------|------|
+| [Claude Code](https://claude.ai/code) (Anthropic) | Pipeline code development, script optimization, bug fixing, and manuscript writing assistance |
+| [NVIDIA NIM](https://build.nvidia.com) | Free developer credits for all DeepSeek V4-Flash and V4-Pro API inference calls |
+
+> This pipeline was developed with the assistance of **Claude Code** (Anthropic) —
+> used for writing and optimizing the Python scripts (`parse_rtl.py`, `translate.py`,
+> `validate_compile.py`, `validate_fpv.py`, `run_step1.py`), debugging, and improving
+> the paper text. All LLM inference during the research runs was served via
+> **NVIDIA NIM** free developer credits at [build.nvidia.com](https://build.nvidia.com).
+
+---
+
 ## Citation
 
 ```bibtex
