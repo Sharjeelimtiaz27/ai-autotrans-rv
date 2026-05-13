@@ -188,6 +188,20 @@ def _parse_baseline(report_path: Path) -> dict:
 
     for line in text.splitlines():
         line = line.strip()
+        # JasperGold format: [N]  fully.qualified.prop.name   status   engine ...
+        if line.startswith("[") and "]" in line:
+            parts = line.split()
+            if len(parts) >= 3:
+                prop_full = parts[1]
+                status    = parts[2].lower()
+                if any(kw in status for kw in ("proven", "cex", "unknown", "undetermined")):
+                    key = "proven" if "proven" in status else (
+                          "cex"    if "cex"    in status else "unknown")
+                    # Use the short assertion name (last dot-component)
+                    short = prop_full.split(".")[-1]
+                    results[short] = key
+            continue
+        # Legacy pipe-delimited format
         if "|" not in line:
             continue
         parts = [p.strip() for p in line.split("|")]
