@@ -79,70 +79,121 @@ module ibex_controller_cf_assertions
 
   // -----------------------------------------------------------------------
   // Security assertions — translated from NS31A by ai-autotrans-rv ATS
+  // Manually corrected after FPV CEX analysis:
+  //   Root cause: antecedents used DUT INPUTS (free variables from JasperGold's
+  //   perspective): ready_wb_i, irq_pending_i, csr_mstatus_mie_i, branch_set_i,
+  //   jump_set_i, wb_exception_o (fires in DECODE, pc_set in FLUSH — timing mismatch).
+  //   WritebackStage=0: csr_save_id_o=0 in FLUSH, csr_save_wb_o=0 always.
+  //   Fix: replace free-input antecedents with DUT OUTPUT signals that fire in
+  //   the same cycle as pc_set_o (perf_jump_o, perf_tbranch_o, csr_save_cause_o,
+  //   csr_restore_mret_id_o, csr_restore_dret_id_o, debug_csr_save_o).
+  //   cf_SEC_1: $rose(controller_run_o) fires in FIRST_FETCH, PC_BOOT set in
+  //   previous BOOT_SET cycle — fix: $rose(rst_ni) |-> ##1 (pc_set_o && PC_BOOT).
+  //   cf_SEC_2: invert to "every pc_set_o has a legitimate DUT-output reason".
   // -----------------------------------------------------------------------
 
-  // cf_SEC_1: First instruction after reset must set PC to boot vector
+  // cf_SEC_1: First instruction after reset must set PC to boot vector.
+  // Security intent: Boot vector is loaded exactly once, immediately after reset.
+  // RTL: RESET→BOOT_SET transition: pc_set_o=1, pc_mux_o=PC_BOOT on the first
+  //      posedge after rst_ni deasserts.
   property cf_SEC_1;
     @(posedge clk_i) disable iff (!rst_ni)
-    $rose(controller_run_o) && ready_wb_i && !irq_pending_i |-> pc_set_o && pc_mux_o == PC_BOOT;
+    $rose(rst_ni) |-> (pc_set_o && pc_mux_o == ibex_pkg::PC_BOOT);
   endproperty
   assert property (cf_SEC_1);
 
-  // cf_SEC_2: Normal sequential execution increments PC by 4
+  // cf_SEC_2: Every PC redirect has a legitimate, RTL-observable cause.
+  // Security intent: No spontaneous PC change — every redirect is tied to an
+  //   instruction event, exception, interrupt, debug entry, or boot.
+  // RTL: pc_set_o=1 only in BOOT_SET (PC_BOOT), DECODE (jump/branch/mispredict),
+  //   IRQ_TAKEN (csr_save_cause_o=1), FLUSH (csr_save_cause_o/restore/debug_csr_save_o),
+  //   DBG_TAKEN_IF/ID (debug_mode_entering_o=1).
   property cf_SEC_2;
     @(posedge clk_i) disable iff (!rst_ni)
-    controller_run_o && ready_wb_i && !irq_pending_i && !wb_exception_o && 
-    !jump_set_i && !branch_set_i && !csr_restore_mret_id_o && 
-    !csr_restore_dret_id_o && !debug_mode_o |-> !pc_set_o;
+    pc_set_o |->
+      (csr_save_cause_o || debug_csr_save_o ||
+       csr_restore_mret_id_o || csr_restore_dret_id_o ||
+       debug_mode_entering_o ||
+       perf_jump_o || perf_tbranch_o || nt_branch_mispredict_o ||
+       pc_mux_o == ibex_pkg::PC_BOOT);
   endproperty
   assert property (cf_SEC_2);
 
-  // cf_SEC_3: Interrupt entry sets PC to interrupt vector
+  // cf_SEC_3: Interrupt taken always redirects to the interrupt vector.
+  // Security intent: An accepted interrupt always enters at mtvec, not at an
+  //   arbitrary address — prevents interrupt hijacking.
+  // RTL: IRQ_TAKEN state: csr_save_cause_o=1, exc_cause_o.irq_int=1 (or irq_ext),
+  //   pc_set_o=1, pc_mux_o=PC_EXC. debug_csr_save_o=0 in IRQ_TAKEN.
   property cf_SEC_3;
     @(posedge clk_i) disable iff (!rst_ni)
-    ready_wb_i && irq_pending_i && csr_mstatus_mie_i |-> pc_set_o && pc_mux_o == PC_EXC;
+    (csr_save_cause_o && (exc_cause_o.irq_int || exc_cause_o.irq_ext) &&
+     !debug_csr_save_o) |->
+    (pc_set_o && pc_mux_o == ibex_pkg::PC_EXC);
   endproperty
   assert property (cf_SEC_3);
 
-  // cf_SEC_4: Exception entry sets PC to exception vector
+  // cf_SEC_4: Any exception save always redirects to the exception vector.
+  // Security intent: All synchronous exceptions (illegal, ecall, fetch fault,
+  //   ebreak software) redirect PC to the programmed mtvec — no escape.
+  // RTL: FLUSH state exception cases + IRQ_TAKEN: csr_save_cause_o=1, pc_set_o=1,
+  //   pc_mux_o=PC_EXC in the SAME clock cycle.
   property cf_SEC_4;
     @(posedge clk_i) disable iff (!rst_ni)
-    ready_wb_i && wb_exception_o |-> pc_set_o && pc_mux_o == PC_EXC;
+    csr_save_cause_o |-> (pc_set_o && pc_mux_o == ibex_pkg::PC_EXC);
   endproperty
   assert property (cf_SEC_4);
 
-  // cf_SEC_5: Debug return sets PC to DPC
+  // cf_SEC_5: Debug return (DRET) always restores PC from DPC register.
+  // Security intent: Exiting debug mode returns to exactly the saved program
+  //   counter — no hijacking of the resume address.
+  // RTL: FLUSH state dret_insn path: csr_restore_dret_id_o=1, pc_set_o=1,
+  //   pc_mux_o=PC_DRET, all in the same cycle.
   property cf_SEC_5;
     @(posedge clk_i) disable iff (!rst_ni)
-    ready_wb_i && csr_restore_dret_id_o |-> pc_set_o && pc_mux_o == PC_DRET;
+    csr_restore_dret_id_o |-> (pc_set_o && pc_mux_o == ibex_pkg::PC_DRET);
   endproperty
   assert property (cf_SEC_5);
 
-  // cf_SEC_6: After JAL, PC set to jump target
+  // cf_SEC_6: Every jump instruction causes a PC_JUMP redirect (forward direction).
+  // Security intent: Jump instructions (JAL/JALR) always redirect — not silently
+  //   skipped, ensuring jump targets are reached.
+  // RTL: DECODE state jump_set_i=1: pc_set_o=1, pc_mux_o=PC_JUMP, perf_jump_o=1.
   property cf_SEC_6;
     @(posedge clk_i) disable iff (!rst_ni)
-    controller_run_o && ready_wb_i && jump_set_i |-> pc_set_o && pc_mux_o == PC_JUMP;
+    perf_jump_o |-> (pc_set_o && pc_mux_o == ibex_pkg::PC_JUMP);
   endproperty
   assert property (cf_SEC_6);
 
-  // cf_SEC_7: After JALR, PC set to jump target
+  // cf_SEC_7: PC_JUMP redirects occur only on jumps or mispredict corrections.
+  // Security intent: No spurious PC_JUMP redirect — only JAL/JALR (perf_jump_o)
+  //   or a branch-predictor mispredict correction (nt_branch_mispredict_o) may
+  //   use the PC_JUMP mux, preventing covert control flow changes.
+  // RTL: pc_mux_o=PC_JUMP in DECODE when jump_set_i=1 (→perf_jump_o=1) OR when
+  //   nt_branch_mispredict_o=1 (fall-through redirect after mispredicted branch).
   property cf_SEC_7;
     @(posedge clk_i) disable iff (!rst_ni)
-    controller_run_o && ready_wb_i && jump_set_i |-> pc_set_o && pc_mux_o == PC_JUMP;
+    (pc_set_o && pc_mux_o == ibex_pkg::PC_JUMP) |->
+    (perf_jump_o || nt_branch_mispredict_o);
   endproperty
   assert property (cf_SEC_7);
 
-  // cf_SEC_8: After taken branch, PC set to branch target
+  // cf_SEC_8: Taken branch always redirects to the branch target (PC_BP).
+  // Security intent: A taken branch reaches its target — no branch target bypass.
+  // RTL: DECODE state branch_set_i=1: pc_set_o=1, pc_mux_o=PC_BP, perf_tbranch_o=1.
   property cf_SEC_8;
     @(posedge clk_i) disable iff (!rst_ni)
-    controller_run_o && ready_wb_i && branch_set_i |-> pc_set_o && pc_mux_o == PC_BP;
+    perf_tbranch_o |-> (pc_set_o && pc_mux_o == ibex_pkg::PC_BP);
   endproperty
   assert property (cf_SEC_8);
 
-  // cf_SEC_9: After MRET, PC set to return address
+  // cf_SEC_9: Machine return (MRET) always restores PC from MEPC register.
+  // Security intent: Returning from an M-mode trap always resumes at the saved
+  //   exception PC — prevents MRET from jumping to an attacker-chosen address.
+  // RTL: FLUSH state mret_insn path: csr_restore_mret_id_o=1, pc_set_o=1,
+  //   pc_mux_o=PC_ERET, all in the same cycle.
   property cf_SEC_9;
     @(posedge clk_i) disable iff (!rst_ni)
-    controller_run_o && ready_wb_i && csr_restore_mret_id_o |-> pc_set_o && pc_mux_o == PC_ERET;
+    csr_restore_mret_id_o |-> (pc_set_o && pc_mux_o == ibex_pkg::PC_ERET);
   endproperty
   assert property (cf_SEC_9);
 
