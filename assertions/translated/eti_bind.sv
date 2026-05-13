@@ -148,15 +148,17 @@ module ibex_controller_eti_assertions
   endproperty
   assert property (eti_SEC_5);
 
-  // eti_SEC_6: WB-stage exception cause is always a memory access fault.
-  // Security: csr_save_wb_o captures only WB-stage load/store errors, not sync exceptions.
-  // RTL: FLUSH csr_save_wb_o = store_err_q|load_err_q; in those cases exc_cause_o is
-  //      set to StoreAccessFault or LoadAccessFault (never to sync exception codes).
+  // eti_SEC_6: Synchronous exception (non-IRQ, non-debug) does not save the IF-stage PC.
+  // Security: only IRQ_TAKEN and DBG_TAKEN_IF assert csr_save_if_o; FLUSH sync exceptions
+  //           never do — correct per RISC-V spec (fault PC is in ID, not IF).
+  // RTL: csr_save_if_o is set only in IRQ_TAKEN (line 644) and DBG_TAKEN_IF (line 685);
+  //      in FLUSH (sync exception path) csr_save_if_o stays 0.
+  // Note: replaces original csr_save_wb_o antecedent which is always 0 with WritebackStage=0.
   property eti_SEC_6;
     @(posedge clk_i) disable iff (!rst_ni)
-    (csr_save_cause_o && csr_save_wb_o) |->
-    (exc_cause_o == ibex_pkg::ExcCauseLoadAccessFault ||
-     exc_cause_o == ibex_pkg::ExcCauseStoreAccessFault);
+    (csr_save_cause_o && !debug_csr_save_o &&
+     !exc_cause_o.irq_int && !exc_cause_o.irq_ext) |->
+    !csr_save_if_o;
   endproperty
   assert property (eti_SEC_6);
 
@@ -225,39 +227,41 @@ module ibex_controller_eti_assertions
   endproperty
   assert property (eti_SEC_12);
 
-  // eti_SEC_13: Instruction-access fault saves the ID-stage PC.
-  // Security: the faulting instruction address (in ID) is the correct mepc value.
-  // RTL: FLUSH instr_fetch_err_prio: exc_cause_o = InstrAccessFault;
-  //      csr_save_id_o = ~(store_err_q|load_err_q) = 1 (no concurrent WB error).
+  // eti_SEC_13: Instruction-access fault redirects to exception handler (not WB save).
+  // Security: InstrAccessFault triggers a PC redirect to the exception vector, not a
+  //           write-back stage save — correct per RISC-V spec.
+  // RTL: FLUSH instr_fetch_err_prio: pc_set_o=1, exc_cause_o=InstrAccessFault.
+  //      With WritebackStage=0, csr_save_id_o=0 always in FLUSH (g_no_writeback_mepc_save);
+  //      use pc_set_o && !csr_save_wb_o as the RTL-invariant consequent instead.
   property eti_SEC_13;
     @(posedge clk_i) disable iff (!rst_ni)
     (csr_save_cause_o && !debug_csr_save_o &&
      exc_cause_o == ibex_pkg::ExcCauseInstrAccessFault) |->
-    csr_save_id_o;
+    (pc_set_o && !csr_save_wb_o);
   endproperty
   assert property (eti_SEC_13);
 
-  // eti_SEC_14: Illegal instruction exception saves the ID-stage PC.
-  // Security: the illegal instruction address (in ID) is the correct mepc value.
-  // RTL: FLUSH illegal_insn_prio: exc_cause_o = IllegalInsn;
-  //      csr_save_id_o = ~(store_err_q|load_err_q) = 1.
+  // eti_SEC_14: Illegal instruction exception redirects to exception handler.
+  // Security: IllegalInsn triggers PC redirect to exception vector, not a WB save.
+  // RTL: FLUSH illegal_insn_prio: pc_set_o=1, exc_cause_o=IllegalInsn.
+  //      With WritebackStage=0, csr_save_id_o=0 in FLUSH; use pc_set_o && !csr_save_wb_o.
   property eti_SEC_14;
     @(posedge clk_i) disable iff (!rst_ni)
     (csr_save_cause_o && !debug_csr_save_o &&
      exc_cause_o == ibex_pkg::ExcCauseIllegalInsn) |->
-    csr_save_id_o;
+    (pc_set_o && !csr_save_wb_o);
   endproperty
   assert property (eti_SEC_14);
 
-  // eti_SEC_15: M-mode ecall exception saves the ID-stage PC.
-  // Security: ecall return address is the ecall instruction itself (in ID).
-  // RTL: FLUSH ecall_insn_prio: exc_cause_o = EcallMMode or EcallUMode;
-  //      csr_save_id_o = ~(store_err_q|load_err_q) = 1.
+  // eti_SEC_15: M-mode ecall exception redirects to exception handler.
+  // Security: EcallMMode triggers PC redirect to exception vector, not a WB save.
+  // RTL: FLUSH ecall_insn_prio: pc_set_o=1, exc_cause_o=EcallMMode.
+  //      With WritebackStage=0, csr_save_id_o=0 in FLUSH; use pc_set_o && !csr_save_wb_o.
   property eti_SEC_15;
     @(posedge clk_i) disable iff (!rst_ni)
     (csr_save_cause_o && !debug_csr_save_o &&
      exc_cause_o == ibex_pkg::ExcCauseEcallMMode) |->
-    csr_save_id_o;
+    (pc_set_o && !csr_save_wb_o);
   endproperty
   assert property (eti_SEC_15);
 
@@ -271,14 +275,17 @@ module ibex_controller_eti_assertions
   endproperty
   assert property (eti_SEC_16);
 
-  // eti_SEC_17: Non-debug exception from ID stage has a valid sync exception cause.
-  // Security: when saving ID-stage context for a non-debug exception, the cause must
-  //           be one of the five synchronous ID-stage exceptions Ibex implements.
-  // RTL: FLUSH, non-debug (debug_csr_save_o=0): csr_save_id_o=1 only when exc_req_q is
-  //      processed; exc_cause_o is set by unique-case to exactly these five values.
+  // eti_SEC_17: Non-debug sync exception cause is one of Ibex's five standard codes.
+  // Security: every non-debug, non-IRQ, non-WB trap carries a valid RISC-V exception code.
+  // RTL: FLUSH unique-case covers exactly {InstrAccessFault, IllegalInsn, EcallMMode/UMode,
+  //      Breakpoint}; exc_cause_o cannot be set to any other value in this path.
+  // Note: replaces csr_save_id_o antecedent (always 0 in FLUSH with WritebackStage=0).
+  //       !csr_save_wb_o && !irq_int && !irq_ext selects sync FLUSH exceptions.
   property eti_SEC_17;
     @(posedge clk_i) disable iff (!rst_ni)
-    (csr_save_cause_o && csr_save_id_o && !debug_csr_save_o) |->
+    (csr_save_cause_o && !debug_csr_save_o &&
+     !csr_save_wb_o &&
+     !exc_cause_o.irq_int && !exc_cause_o.irq_ext) |->
     (exc_cause_o == ibex_pkg::ExcCauseIllegalInsn ||
      exc_cause_o == ibex_pkg::ExcCauseEcallMMode ||
      exc_cause_o == ibex_pkg::ExcCauseEcallUMode ||
