@@ -130,6 +130,14 @@ BIND FILE PORT RULES:
          bind {{MODULE_NAME}} {{MODULE_NAME}}_assertions u_{{MODULE_SHORT}}_assert (.*);
   R21. The (.*) wildcard connects all ports by name — valid only if port names
        in the assertion module exactly match DUT port names.
+  R22. The assertion module declaration MUST include 'import ibex_pkg::*;' so that
+       enum constants (PRIV_LVL_M, CSR_OP_WRITE, etc.) and types are in scope
+       without requiring the ibex_pkg:: prefix in every assertion:
+         module {{MODULE_NAME}}_assertions
+             import ibex_pkg::*;
+         (
+             input logic {{CLOCK}},
+             ...
 
 ================================================================================
 QUALITY CHECKLIST — VERIFY BEFORE OUTPUTTING
@@ -180,7 +188,9 @@ Output complete, compilable SystemVerilog. Begin with this header exactly:
 // Type             : Sequential
 // DO NOT MODIFY — regenerate via pipeline if changes needed
 
-module {{MODULE_NAME}}_assertions (
+module {{MODULE_NAME}}_assertions
+    import ibex_pkg::*;
+(
     // ALL ports are input — assertion module observes only, never drives
     input logic {{CLOCK}},
     input logic {{RESET}},

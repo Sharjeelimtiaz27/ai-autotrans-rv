@@ -113,35 +113,34 @@ TRANSLATION APPROACH RULES:
 
 SVA SYNTAX RULES (COMBINATIONAL):
   R10. FORBIDDEN: @(posedge ...), ##N, $past(), $rose(), $fell(),
-       disable iff, always_ff, posedge, negedge, clocking blocks.
+       disable iff, always_ff, posedge, negedge, clocking blocks,
+       'assert property' at module scope (QuestaSim 2024 vlog-1957).
        Any use of these causes a compilation error for this module type.
-  R11. Use concurrent assertion syntax WITHOUT a clocking event:
-         property PROP_NAME;
-           <boolean expression> |-> <boolean expression>;
-         endproperty
-         assert property (PROP_NAME);
-       OR immediate assertions inside always_comb:
+  R11. REQUIRED: Use immediate assertions inside always_comb blocks ONLY:
          always_comb begin
-           PROP_NAME: assert (<boolean expression>);
+           a_{{MODULE_SHORT}}_SEC_N: assert (!<antecedent> || <consequent>)
+             else $error("<description>");
          end
-  R12. For combinational implication (if A then B must hold now):
-         property PROP_NAME;
-           <condition> |-> <consequence>;
-         endproperty
-  R13. Every property must have both a named property block AND a named assert:
-         property PROP_NAME; <antecedent> |-> <consequent>; endproperty
-         assert property (PROP_NAME);
-  R14. Property names: {{MODULE_SHORT}}_SEC_<N> where N is a sequential integer.
-  R15. Antecedent must be reachable in normal (non-Trojan) operation.
-       If the antecedent can never be true given available signals, rewrite it.
-  R16. No $display, $error, or simulation-only constructs inside properties.
+       The boolean implication !A || B is equivalent to A -> B.
+       Do NOT use 'property ... endproperty' or 'assert property' for
+       combinational modules -- QuestaSim rejects unclocked assert property.
+  R12. All 10 assertions may be grouped in a single always_comb block.
+  R13. Assertion label format: a_{{MODULE_SHORT}}_SEC_<N>
+  R14. Antecedent must be reachable (not always false) on clean RTL.
+  R15. No $display or simulation-only constructs inside assertions.
 
 BIND FILE PORT RULES:
-  R17. ALL ports in the assertion module must be declared as INPUT.
+  R16. ALL ports in the assertion module must be declared as INPUT.
        This includes signals that are outputs of the DUT.
        The assertion module only observes signals — it never drives them.
        Driving a DUT output from the assertion module causes a driver conflict.
-  R18. NO clock or reset in the port list (combinational module has neither).
+  R17. NO clock or reset in the port list (combinational module has neither).
+  R18. The assertion module declaration MUST include 'import ibex_pkg::*;':
+         module {{MODULE_NAME}}_assertions
+             import ibex_pkg::*;
+         #( ... ) (  -- or without parameters if not needed
+             {{PORT_DECLARATIONS}}
+         );
   R19. Bind statement goes OUTSIDE and AFTER the assertion module:
          bind {{MODULE_NAME}} {{MODULE_NAME}}_assertions u_{{MODULE_SHORT}}_assert (.*);
   R20. The (.*) wildcard connects all ports by name — valid only if port names
