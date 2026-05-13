@@ -237,10 +237,14 @@ def _parse_vacuity(report_path: Path) -> dict:
 
 def _run_jg(jg_bin: str, tcl_path: Path) -> tuple:
     """Run JasperGold in batch mode. Returns (exit_code, stdout+stderr)."""
-    cmd = [jg_bin, "-batch", "-tcl", str(tcl_path)]
+    import tempfile, shutil as _shutil
+    proj_dir = Path(tempfile.mkdtemp(prefix="ats_jg_"))
     try:
+        cmd = [jg_bin, "-batch", "-proj", str(proj_dir), "-tcl", str(tcl_path)]
         res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                              cwd=ROOT, timeout=600)
+    finally:
+        _shutil.rmtree(proj_dir, ignore_errors=True)
         res.stdout = res.stdout.decode("utf-8", errors="replace") if isinstance(res.stdout, bytes) else (res.stdout or "")
         res.stderr = res.stderr.decode("utf-8", errors="replace") if isinstance(res.stderr, bytes) else (res.stderr or "")
     except subprocess.TimeoutExpired:
