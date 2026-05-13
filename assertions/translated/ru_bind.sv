@@ -6,7 +6,9 @@
 // Type             : Sequential
 // DO NOT MODIFY — regenerate via pipeline if changes needed
 
-module ibex_wb_stage_assertions (
+module ibex_wb_stage_assertions
+    import ibex_pkg::*;
+(
     // ALL ports are input — assertion module observes only, never drives
     input logic clk_i,
     input logic rst_ni,

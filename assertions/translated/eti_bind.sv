@@ -6,7 +6,9 @@
 // Type             : Sequential
 // DO NOT MODIFY — regenerate via pipeline if changes needed
 
-module ibex_controller_eti_assertions (
+module ibex_controller_eti_assertions
+    import ibex_pkg::*;
+(
     // ALL ports are input — assertion module observes only, never drives
     input logic clk_i,
     input logic rst_ni,
@@ -93,7 +95,7 @@ module ibex_controller_eti_assertions (
   property eti_SEC_2;
     @(posedge clk_i) disable iff (!rst_ni)
     (wb_exception_o || id_exception_o) |-> 
-    (csr_mtval_o != 32'd0 || exc_cause_o == ibex_pkg::EXC_CAUSE_BREAKPOINT);
+    (csr_mtval_o != 32'd0 || exc_cause_o == ExcCauseBreakpoint);
   endproperty
   assert property (eti_SEC_2);
 
