@@ -209,8 +209,10 @@ def _run_jg(jg_bin: str, tcl_path: Path) -> tuple:
     """Run JasperGold in batch mode. Returns (exit_code, stdout+stderr)."""
     cmd = [jg_bin, "-no_gui", "-batch", "-tcl", str(tcl_path)]
     try:
-        res = subprocess.run(cmd, capture_output=True, text=True,
+        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                              cwd=ROOT, timeout=600)
+        res.stdout = res.stdout.decode("utf-8", errors="replace") if isinstance(res.stdout, bytes) else (res.stdout or "")
+        res.stderr = res.stderr.decode("utf-8", errors="replace") if isinstance(res.stderr, bytes) else (res.stderr or "")
     except subprocess.TimeoutExpired:
         return 1, "JasperGold timed out after 600s"
 

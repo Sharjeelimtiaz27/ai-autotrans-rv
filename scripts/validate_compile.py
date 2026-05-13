@@ -99,7 +99,7 @@ def _run_vlog(vlog_bin: str, bind_path: Path, module_key: str,
               work_dir: Path) -> tuple:
     """Compile RTL + bind file. Returns (success: bool, output: str)."""
     work_lib = work_dir / "work"
-    subprocess.run(["vlib", str(work_lib)], capture_output=True, cwd=ROOT)
+    subprocess.run(["vlib", str(work_lib)], stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=ROOT)
 
     cmd = (
         [vlog_bin, "-sv12compat", "-work", str(work_lib),
@@ -108,8 +108,10 @@ def _run_vlog(vlog_bin: str, bind_path: Path, module_key: str,
         + [str(bind_path)]
     )
     try:
-        res = subprocess.run(cmd, capture_output=True, text=True,
+        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                              cwd=ROOT, timeout=300)
+        res.stdout = res.stdout.decode("utf-8", errors="replace") if isinstance(res.stdout, bytes) else (res.stdout or "")
+        res.stderr = res.stderr.decode("utf-8", errors="replace") if isinstance(res.stderr, bytes) else (res.stderr or "")
     except subprocess.TimeoutExpired:
         return False, "vlog timed out after 300s"
 

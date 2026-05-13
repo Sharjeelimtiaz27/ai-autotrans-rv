@@ -51,8 +51,8 @@ def check(label: str, ok: bool, fix: str = "") -> bool:
 def run_silent(*cmd) -> tuple:
     """Return (stdout, returncode)."""
     try:
-        r = subprocess.run(list(cmd), capture_output=True, text=True, timeout=30)
-        return r.stdout.strip(), r.returncode
+        r = subprocess.run(list(cmd), stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30)
+        return (r.stdout or b"").decode("utf-8", errors="replace").strip(), r.returncode
     except Exception:
         return "", 1
 
