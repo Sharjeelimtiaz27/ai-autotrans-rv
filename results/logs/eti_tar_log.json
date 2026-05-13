@@ -141,5 +141,29 @@
     }
   ],
   "timestamp": "2026-05-10T22:40:14.814775+00:00",
-  "translation_coverage": 100.0
+  "translation_coverage": 100.0,
+  "TAR": 100.0,
+  "proven_non_vacuous": 17,
+  "total_assertions_in_bind": 17,
+  "fpv_baseline": {
+    "_assert_1": "proven",
+    "_assert_2": "proven",
+    "_assert_3": "proven",
+    "_assert_4": "proven",
+    "_assert_5": "proven",
+    "_assert_6": "proven",
+    "_assert_7": "proven",
+    "_assert_8": "proven",
+    "_assert_9": "proven",
+    "_assert_10": "proven",
+    "_assert_11": "proven",
+    "_assert_12": "proven",
+    "_assert_13": "proven",
+    "_assert_14": "proven",
+    "_assert_15": "proven",
+    "_assert_16": "proven",
+    "_assert_17": "proven"
+  },
+  "fpv_vacuity": {},
+  "fpv_timestamp": "2026-05-13T19:08:08.087845+00:00"
 }
