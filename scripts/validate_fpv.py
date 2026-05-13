@@ -372,44 +372,230 @@ def _update_tar(module_key: str, baseline: dict, vacuity: dict, vac_base: set, t
 
 
 # ---------------------------------------------------------------------------
+# Retry prompt helpers
+# ---------------------------------------------------------------------------
+
+def _get_assert_order(sv_content: str) -> list:
+    """Return ordered list of property names from 'assert property(...)' lines."""
+    return [m.group(1) for m in
+            re.finditer(r'assert\s+property\s*\(\s*(\w+)\s*\)', sv_content)]
+
+
+def _map_issues_to_props(issues: list, sv_content: str) -> list:
+    """
+    Map JasperGold _assert_N names to property names.
+    Returns list of (kind, original_issue, prop_name_or_None).
+    """
+    order = _get_assert_order(sv_content)
+    result = []
+    for issue in issues:
+        m = re.search(r'_assert_(\d+)', issue)
+        kind = "CEX" if "CEX" in issue else ("Vacuous" if "Vacuous" in issue else "?")
+        if m:
+            idx = int(m.group(1)) - 1
+            prop = order[idx] if 0 <= idx < len(order) else None
+            result.append((kind, issue, prop))
+        else:
+            result.append((kind, issue, None))
+    return result
+
+
+def _build_ns31a_context(module_key: str, issues: list, bind_content: str) -> str:
+    """
+    For each failing assertion look up the original NS31A description and SVA
+    from assertion_dataset/ns31a_<module>.csv via the tar_log mappings.
+    """
+    import csv as _csv
+
+    log_path = LOGS_DIR / f"{module_key}_tar_log.json"
+    if not log_path.exists():
+        return ""
+    try:
+        log = json.loads(log_path.read_text(encoding="utf-8"))
+    except Exception:
+        return ""
+
+    # property_name → NS31A mapping entry
+    prop_to_ns31a = {m.get("property_name", ""): m
+                     for m in log.get("mappings", [])}
+
+    # NS31A CSV rows indexed by 1-based row number
+    csv_path = ROOT / "assertion_dataset" / f"ns31a_{module_key}.csv"
+    ns31a_rows: dict = {}
+    if csv_path.exists():
+        try:
+            with open(csv_path, encoding="utf-8", newline="") as f:
+                for i, row in enumerate(_csv.DictReader(f), 1):
+                    ns31a_rows[i] = row
+        except Exception:
+            pass
+
+    mapped = _map_issues_to_props(issues, bind_content)
+    lines  = ["FAILING ASSERTIONS — ORIGINAL NS31A SOURCE:"]
+    for kind, issue, prop_name in mapped:
+        lines.append(f"  {issue}  →  property: {prop_name or '(unknown)'}")
+        if prop_name and prop_name in prop_to_ns31a:
+            entry = prop_to_ns31a[prop_name]
+            lines.append(f"    NS31A group : {entry.get('ns31a_signal', '')}")
+            ns31a_id = entry.get("id")
+            if ns31a_id and ns31a_id in ns31a_rows:
+                row = ns31a_rows[ns31a_id]
+                lines.append(f"    Description : {row.get('description', '').strip()}")
+                sva = row.get("sva", "").strip()
+                lines.append(f"    Source SVA  : {sva if sva else '(English description only)'}")
+                notes = row.get("notes", "").strip()
+                if notes:
+                    lines.append(f"    Notes       : {notes}")
+        lines.append("")
+    return "\n".join(lines)
+
+
+def _build_signals_context(module_key: str) -> str:
+    """Signal classification: DUT outputs (RTL-constrained) vs DUT inputs (free vars)."""
+    try:
+        sig_path = ROOT / "results" / "signals" / f"{module_key}_signals.json"
+        if not sig_path.exists():
+            return ""
+        signals = json.loads(sig_path.read_text(encoding="utf-8"))
+    except Exception:
+        return ""
+
+    out_names = [p["name"] for p in signals.get("ports", {}).get("outputs", [])]
+    in_names  = [p["name"] for p in signals.get("ports", {}).get("inputs", [])]
+    if not out_names and not in_names:
+        return ""
+
+    def _fmt(names: list, limit: int = 20) -> str:
+        s = ", ".join(names[:limit])
+        return s + (f" ... (+{len(names)-limit} more)" if len(names) > limit else "")
+
+    lines = ["DUT SIGNAL CLASSIFICATION (for FPV):"]
+    if out_names:
+        lines.append(
+            "  OUTPUTS — driven by DUT RTL logic, constrained in FPV (NOT free variables):\n"
+            f"    {_fmt(out_names)}")
+    if in_names:
+        lines.append(
+            "  INPUTS  — free variables in FPV, JasperGold may drive them arbitrarily:\n"
+            f"    {_fmt(in_names)}")
+    return "\n".join(lines)
+
+
+# Per-module ibex FPV pitfall notes injected into every retry prompt.
+_IBEX_NOTES: dict = {
+    "csr": [
+        "illegal_csr_insn_o = csr_access_i & (...).  Use csr_access_i in assertion "
+        "preconditions, NOT csr_op_en_i (which is gated differently and causes false CEX).",
+    ],
+    "do": [
+        "ibex_controller WritebackStage parameter defaults to 0.  With WritebackStage=0, "
+        "csr_save_id_o is ALWAYS 0 in the FLUSH state (g_no_writeback_mepc_save path). "
+        "Do NOT assert |-> csr_save_id_o for FLUSH-state properties.  "
+        "Use |-> pc_set_o instead (pc_set_o IS 1 in non-debug exception FLUSH paths).",
+        "debug_csr_save_o is set ONLY in DBG_TAKEN_IF and DBG_TAKEN_ID states, "
+        "both of which also assert debug_mode_entering_o.  These are the only states "
+        "where dcsr/dpc are written.",
+    ],
+    "eti": [
+        "ibex_controller WritebackStage parameter defaults to 0.  With WritebackStage=0:\n"
+        "  • csr_save_id_o = 0 ALWAYS in FLUSH (g_no_writeback_mepc_save path).\n"
+        "  • csr_save_wb_o = 0 ALWAYS (no WB-stage load/store error path).\n"
+        "  Assertions that assert |-> csr_save_id_o for FLUSH sync exceptions will CEX.\n"
+        "  Assertions whose antecedent includes csr_save_wb_o or csr_save_id_o (as non-debug\n"
+        "  guard) will be vacuous because the antecedent never fires.\n"
+        "  FIX: Replace |-> csr_save_id_o with |-> (pc_set_o && !csr_save_wb_o).\n"
+        "  FIX: Rewrite vacuous assertions to use csr_save_cause_o as trigger and exclude\n"
+        "       debug (debug_csr_save_o) and IRQ (exc_cause_o.irq_int|irq_ext) explicitly.",
+        "FLUSH-state exception priority (highest to lowest):\n"
+        "  1. store_err_q|load_err_q (WB errors, WritebackStage=1 only) → csr_save_wb_o=1\n"
+        "  2. instr_fetch_err_prio → exc_cause=ExcCauseInstrAccessFault\n"
+        "  3. illegal_insn_prio    → exc_cause=ExcCauseIllegalInsn\n"
+        "  4. ecall_insn_prio      → exc_cause=ExcCauseEcallMMode or EcallUMode\n"
+        "  5. ebrk_insn_prio       → exc_cause=ExcCauseBreakpoint\n"
+        "  Priority is implemented as if-else, so exactly ONE prio signal is 1 at a time.\n"
+        "  Therefore: if exc_cause_o == ExcCauseInstrAccessFault, then !csr_save_wb_o.",
+    ],
+    "cf": [
+        "ibex_controller WritebackStage parameter defaults to 0.  With WritebackStage=0, "
+        "csr_save_id_o = 0 in FLUSH.  Use pc_set_o and pc_mux_o for PC-redirect assertions.",
+    ],
+    "mt": [
+        "ibex_controller WritebackStage parameter defaults to 0.  With WritebackStage=0, "
+        "csr_save_id_o = 0 in FLUSH.  Use pc_set_o and pc_mux_o for PC-redirect assertions.",
+    ],
+}
+
+_IBEX_NOTE_COMMON = (
+    "GENERAL: In bind-based FPV all ports of the assertion module connect to DUT signals. "
+    "DUT OUTPUT signals are RTL-constrained; DUT INPUT signals are free variables "
+    "that JasperGold can set to any legal value.  Do not build preconditions that "
+    "rely on a DUT INPUT implying a DUT OUTPUT — JasperGold will find a CEX."
+)
+
+
+def _build_ibex_notes(module_key: str) -> str:
+    notes = list(_IBEX_NOTES.get(module_key, []))
+    notes.append(_IBEX_NOTE_COMMON)
+    return "IBEX FPV NOTES:\n" + "\n".join(f"  • {n}" for n in notes)
+
+
+# ---------------------------------------------------------------------------
 # Retry prompt
 # ---------------------------------------------------------------------------
 
 def _retry_prompt(module_key: str, bind_content: str,
                   issues: list, attempt: int) -> str:
-    """Original prompt + FPV failures + fix-logic instruction."""
+    """
+    Original translation prompt + NS31A source SVA + signal classification +
+    Ibex-specific FPV pitfall notes + FPV failure details.
+    """
     prompt_path = ROOT / "prompts" / "final" / f"{module_key}_final_prompt.txt"
     base = prompt_path.read_text(encoding="utf-8") if prompt_path.exists() else ""
+
+    ns31a_block   = _build_ns31a_context(module_key, issues, bind_content)
+    signals_block = _build_signals_context(module_key)
+    ibex_block    = _build_ibex_notes(module_key)
 
     issue_block = "\n".join(f"  - {i}" for i in issues)
 
     cex_note = ""
     vac_note = ""
     if any("CEX" in i for i in issues):
-        cex_note = ("  For CEX assertions: the property does NOT hold on clean Ibex RTL.\n"
-                    "  This means the assertion logic is wrong -- rewrite to correctly\n"
-                    "  capture the security property using available Ibex signals.\n")
+        cex_note = (
+            "  CEX = the assertion does NOT hold on clean Ibex RTL.\n"
+            "  The assertion logic is WRONG.  Rewrite using the NS31A source and\n"
+            "  the Ibex FPV notes above to correctly capture the security intent.\n"
+        )
     if any("Vacuous" in i for i in issues):
-        vac_note = ("  For Vacuous assertions: the antecedent NEVER fires in simulation.\n"
-                    "  Rewrite the antecedent so the trigger condition is reachable in\n"
-                    "  normal (non-Trojan) Ibex operation.\n")
+        vac_note = (
+            "  Vacuous = the antecedent NEVER fires in normal Ibex operation.\n"
+            "  Rewrite the trigger condition so it is reachable.  See the FPV notes\n"
+            "  above for which signals actually change state in each FSM path.\n"
+        )
 
     return base + f"""
 
 ================================================================================
-JASPERGOLD FPV FAILED (attempt {attempt}/{MAX_RETRIES}):
+JASPERGOLD FPV FAILED (attempt {attempt}/{MAX_RETRIES})
+================================================================================
 
-The following assertions have issues:
+{ns31a_block}
+
+{signals_block}
+
+{ibex_block}
+
+FAILING ASSERTIONS:
 {issue_block}
 
 {cex_note}{vac_note}
 --- CURRENT BIND FILE (FIX THIS) ---
 {bind_content}
 
-Fix the SVA bind file to resolve these FPV failures.
+Fix the SVA bind file to resolve ALL the above FPV failures.
 Use ONLY signals from the AVAILABLE SIGNALS list above.
-You may change assertion logic to correctly capture the security intent.
-Return ONLY the corrected SystemVerilog bind file (no JSON mapping section).
+Apply the NS31A source intent and the Ibex FPV notes to rewrite failing assertions.
+Return ONLY the corrected SystemVerilog bind file (no JSON, no explanation).
 ================================================================================
 """
 
@@ -520,7 +706,12 @@ def run_module(module_key: str) -> bool:
         # Retry rewrites the active assertion file (wrapper or bind file)
         active_content = active_path.read_text(encoding="utf-8")
         prompt         = _retry_prompt(module_key, active_content, issues, attempt)
-        raw            = run_deepseek(prompt, model=DEEPSEEK_PRO, timeout=300)
+        try:
+            raw = run_deepseek(prompt, model=DEEPSEEK_PRO, timeout=300)
+        except SystemExit:
+            print(f"  [1D] WARNING: DeepSeek API unavailable (timeout/error). "
+                  f"Retrying FPV with current bind file.")
+            continue
 
         raw_dir = ROOT / "results" / "raw"
         raw_dir.mkdir(parents=True, exist_ok=True)
