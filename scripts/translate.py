@@ -334,37 +334,55 @@ def _strip_think_tags(text: str) -> str:
     return re.sub(r'<think>[\s\S]*?</think>', '', text, flags=re.IGNORECASE).strip()
 
 
-def run_deepseek(prompt: str, model: str = DEEPSEEK_FLASH, timeout: int = 300) -> str:
+def run_deepseek(prompt: str, model: str = DEEPSEEK_FLASH, timeout: int = 600) -> str:
     """
     Call DeepSeek via NVIDIA NIM (OpenAI-compatible) and return the text response.
 
-    temperature=0.0 ensures deterministic output — same prompt → same SVA every run.
-    This is the core reproducibility guarantee for the paper.
+    Supports both openai>=1.0 (new client API) and openai<1.0 (old ChatCompletion API)
+    so the same script runs on Python 3.10+ laptops and Python 3.6 EDA servers.
+    temperature=0.0 ensures deterministic output for reproducibility.
     """
     try:
-        from openai import OpenAI
+        import openai as _openai
     except ImportError:
         print("ERROR: openai package not installed.", file=sys.stderr)
-        print("  Run: python -m pip install openai python-dotenv", file=sys.stderr)
+        print("  Run: python3 -m pip install --user openai python-dotenv", file=sys.stderr)
         sys.exit(1)
 
     api_key = _load_api_key()
-    client  = OpenAI(base_url=NVIDIA_BASE_URL, api_key=api_key)
+
+    # Detect API version: 1.x uses OpenAI client; 0.x uses module-level calls
+    _ver = tuple(int(x) for x in _openai.__version__.split(".")[:2])
 
     try:
-        response = client.chat.completions.create(
-            model=model,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=TEMPERATURE,
-            seed=SEED,
-            max_tokens=MAX_TOKENS,
-            timeout=timeout,
-        )
+        if _ver >= (1, 0):
+            from openai import OpenAI
+            client = OpenAI(base_url=NVIDIA_BASE_URL, api_key=api_key)
+            response = client.chat.completions.create(
+                model=model,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=TEMPERATURE,
+                seed=SEED,
+                max_tokens=MAX_TOKENS,
+                timeout=timeout,
+            )
+            raw = response.choices[0].message.content or ""
+        else:
+            # openai < 1.0 (e.g. 0.8.x on Python 3.6 EDA servers)
+            _openai.api_key  = api_key
+            _openai.api_base = NVIDIA_BASE_URL
+            response = _openai.ChatCompletion.create(
+                model=model,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=TEMPERATURE,
+                max_tokens=MAX_TOKENS,
+                request_timeout=timeout,
+            )
+            raw = response["choices"][0]["message"]["content"] or ""
     except Exception as exc:
-        print(f"ERROR: DeepSeek API call failed: {exc}", file=sys.stderr)
+        print("ERROR: DeepSeek API call failed: %s" % exc, file=sys.stderr)
         sys.exit(1)
 
-    raw = response.choices[0].message.content or ""
     return _strip_think_tags(raw)
 
 
