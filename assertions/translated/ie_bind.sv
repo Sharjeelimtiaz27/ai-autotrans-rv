@@ -284,14 +284,22 @@ module ibex_id_stage_assertions
   endproperty
   assert property (ie_SEC_3_branch_opcode);
 
-  // ie_SEC_3_jump_opcode: Jump performance event only fires on JAL/JALR opcode.
-  // RTL: Decoder sets perf_jump_o only for JAL (7'b1101111) or JALR (7'b1100111)
-  //   encodings, or for compressed jump instructions (C.J, C.JAL, C.JALR).
+  // ie_SEC_3_jump_opcode: Jump performance event only fires on JAL/JALR/FENCE.I opcode.
+  // RTL: ibex_decoder.sv sets jump_in_dec_o=1 / jump_set_o=1 for three cases:
+  //   1. OPCODE_JAL   (7'b1101111) — unconditional jump
+  //   2. OPCODE_JALR  (7'b1100111, funct3=000) — register-indirect jump
+  //   3. OPCODE_MISC_MEM + funct3=001 (7'b0001111) — FENCE.I implemented as
+  //      jump-to-next-PC to flush the instruction prefetch buffer (ibex_decoder.sv
+  //      line 574: "FENCE.I is implemented as a jump to the next PC").
+  //   4. Compressed jumps (C.J, C.JAL, C.JALR) when instr_is_compressed_i=1.
+  //   Fix: Flash original missed FENCE.I (Ibex-specific implementation — FENCE.I
+  //   is not a jump in the ISA spec but Ibex uses the jump path for prefetch flush).
   property ie_SEC_3_jump_opcode;
     @(posedge clk_i) disable iff (!rst_ni)
     perf_jump_o |->
     (instr_rdata_i[6:0] == 7'b1101111 ||
      instr_rdata_i[6:0] == 7'b1100111 ||
+     instr_rdata_i[6:0] == 7'b0001111 ||
      instr_is_compressed_i);
   endproperty
   assert property (ie_SEC_3_jump_opcode);
