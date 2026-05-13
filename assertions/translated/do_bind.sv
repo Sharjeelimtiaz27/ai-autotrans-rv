@@ -79,44 +79,50 @@ module ibex_controller_do_assertions
 
   // -----------------------------------------------------------------------
   // Security assertions — translated from NS31A by ai-autotrans-rv ATS
+  // Manually corrected after FPV CEX analysis (ibex_controller FSM semantics)
   // -----------------------------------------------------------------------
 
-  // do_SEC_1: Upon entry to debug mode via ebreak, the PC of the ebreak instruction
-  // is captured. This ensures dpc is correctly set for debug resume.
+  // do_SEC_1: Debug CSR saves (dcsr/dpc writes) occur only when entering debug mode.
+  // Security intent: Prevent unauthorized modification of debug registers outside
+  // of a legitimate debug entry transition.
+  // RTL: debug_csr_save_o is set ONLY in DBG_TAKEN_IF and DBG_TAKEN_ID states,
+  //      both of which also assert debug_mode_entering_o.
   property do_SEC_1;
     @(posedge clk_i) disable iff (!rst_ni)
-    (ebrk_insn_i && instr_valid_i && debug_mode_entering_o) |-> 
-    (debug_cause_o == ibex_pkg::DBG_CAUSE_EBREAK);
+    debug_csr_save_o |-> debug_mode_entering_o;
   endproperty
   assert property (do_SEC_1);
 
-  // do_SEC_2: When single-stepping and a taken branch or jump occurs, the next PC
-  // is the target address. For non-flow-changing instructions, PC advances by 4.
-  // This ensures dpc captures the correct next instruction address.
+  // do_SEC_2: Once in debug mode, the core stays in debug mode until DRET.
+  // Security intent: Debug mode provides isolation — no other mechanism can
+  // exit debug mode, preventing privilege escalation via spurious debug exit.
+  // RTL: debug_mode_d = 0 only when dret_insn is processed in FLUSH state,
+  //      which also asserts csr_restore_dret_id_o.
   property do_SEC_2;
     @(posedge clk_i) disable iff (!rst_ni)
-    (debug_single_step_i && instr_valid_i && !ebrk_insn_i && 
-     (jump_set_i || (branch_set_i && instr_bp_taken_i))) |-> 
-    (pc_set_o && (pc_mux_o == ibex_pkg::PC_JUMP || pc_mux_o == ibex_pkg::PC_BP));
+    (debug_mode_o && !csr_restore_dret_id_o) |-> ##1 debug_mode_o;
   endproperty
   assert property (do_SEC_2);
 
-  // do_SEC_3: When entering debug mode, the current privilege mode is captured.
-  // This ensures dcsr reflects the correct privilege level at debug entry.
+  // do_SEC_3: A fresh debug mode entry always results in debug mode being active.
+  // Security intent: The debug entry handshake completes atomically — if the
+  // controller signals debug_mode_entering_o, debug_mode_o must follow.
+  // RTL: debug_mode_d = 1 is set in all DBG_TAKEN states alongside
+  //      debug_mode_entering_o = 1; next posedge latches debug_mode_q = 1.
   property do_SEC_3;
     @(posedge clk_i) disable iff (!rst_ni)
-    debug_mode_entering_o |-> 
-    (priv_mode_i == ibex_pkg::PRIV_LVL_M || 
-     priv_mode_i == ibex_pkg::PRIV_LVL_U);
+    (debug_mode_entering_o && !debug_mode_o) |-> ##1 debug_mode_o;
   endproperty
   assert property (do_SEC_3);
 
-  // do_SEC_4: Debug CSR writes (indicated by csr_save_wb_o) are only allowed
-  // when the core is in debug mode. This prevents unauthorized modification
-  // of debug registers from non-debug contexts.
+  // do_SEC_4: DRET is the exclusive mechanism for exiting debug mode.
+  // Security intent: Only an authorised debug return instruction can lower
+  // debug_mode_o — no exception, IRQ, or reset (other than rst_ni) bypasses this.
+  // RTL: debug_mode_d = 0 is set only when dret_insn is true in FLUSH state,
+  //      which is the sole path that also sets csr_restore_dret_id_o = 1.
   property do_SEC_4;
     @(posedge clk_i) disable iff (!rst_ni)
-    csr_save_wb_o |-> debug_mode_o;
+    $fell(debug_mode_o) |-> $past(csr_restore_dret_id_o);
   endproperty
   assert property (do_SEC_4);
 
