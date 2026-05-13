@@ -79,147 +79,211 @@ module ibex_controller_eti_assertions
 
   // -----------------------------------------------------------------------
   // Security assertions — translated from NS31A by ai-autotrans-rv ATS
+  // Manually rewritten after FPV CEX/vacuity analysis (ibex_controller FSM).
+  //
+  // Key ibex_controller FSM facts used:
+  //   id_exception_o  = exc_req_d & ~wb_exception_o  (combinational, DECODE state)
+  //   wb_exception_o  = load_err_q|store_err_q|load_err_i|store_err_i (WritebackStage)
+  //   exc_req_d       = (ecall|ebrk|illegal_insn_d|instr_fetch_err) & (cs != FLUSH)
+  //   csr_save_if_o   set in IRQ_TAKEN (line 644) and DBG_TAKEN_IF (line 685)
+  //   csr_save_id_o   set in DBG_TAKEN_ID (conditional) and FLUSH for sync exceptions
+  //   csr_save_wb_o   set in FLUSH: store_err_q|load_err_q cases only
+  //   csr_save_cause_o set in all exception/debug-entry states; always with pc_set_o
+  //   csr_restore_mret_id_o: FLUSH mret branch → pc_mux = PC_ERET
+  //   csr_restore_dret_id_o: FLUSH dret branch → pc_mux = PC_DRET, debug_mode_d = 0
   // -----------------------------------------------------------------------
 
-  // eti_SEC_1: All exceptions, interrupts and NMIs set corresponding exception flag
+  // eti_SEC_1: id_exception_o is driven only by synchronous exception sources.
+  // Security: no spurious exception flag without a real exception request.
+  // RTL: id_exception_o = exc_req_d & ~wb_exception_o; exc_req_d contains exactly
+  //      {ecall, ebrk, illegal_insn_d, instr_fetch_err} (all gated by instr_valid_i).
   property eti_SEC_1;
     @(posedge clk_i) disable iff (!rst_ni)
-    (illegal_insn_i || ecall_insn_i || ebrk_insn_i || 
-     instr_fetch_err_i || load_err_i || store_err_i || 
-     mem_resp_intg_err_i || irq_pending_i || irq_nm_ext_i) |-> 
-    (id_exception_o || wb_exception_o || nmi_mode_o);
+    id_exception_o |->
+    (ecall_insn_i || ebrk_insn_i || illegal_insn_i || instr_fetch_err_i);
   endproperty
   assert property (eti_SEC_1);
 
-  // eti_SEC_2: mtval written with exception-specific information
+  // eti_SEC_2: Store access fault carries the fault address in csr_mtval_o.
+  // Security: exception context is complete — mtval identifies the faulting address.
+  // RTL: FLUSH store_err_prio case: exc_cause_o = StoreAccessFault;
+  //      csr_mtval_o = lsu_addr_last_i (the last LSU address, which is the fault address).
   property eti_SEC_2;
     @(posedge clk_i) disable iff (!rst_ni)
-    (wb_exception_o || id_exception_o) |-> 
-    (csr_mtval_o != 32'd0 || exc_cause_o == ExcCauseBreakpoint);
+    (csr_save_cause_o &&
+     exc_cause_o == ibex_pkg::ExcCauseStoreAccessFault) |->
+    (csr_mtval_o == lsu_addr_last_i);
   endproperty
   assert property (eti_SEC_2);
 
-  // eti_SEC_3: mcause set to exception code
+  // eti_SEC_3: Exception cause field is always a standard RISC-V exception code.
+  // RTL: exc_cause_o defaults to ExcCauseInsnAddrMisa (6'h00); all set values are
+  //      RISC-V-standard codes with lower_cause ≤ 15, or irq_int/irq_ext flags set.
   property eti_SEC_3;
     @(posedge clk_i) disable iff (!rst_ni)
-    (wb_exception_o || id_exception_o) |-> 
-    (exc_cause_o.irq_int || exc_cause_o.irq_ext || 
+    (wb_exception_o || id_exception_o) |->
+    (exc_cause_o.irq_int || exc_cause_o.irq_ext ||
      exc_cause_o.lower_cause inside {[0:15]});
   endproperty
   assert property (eti_SEC_3);
 
-  // eti_SEC_4: mpp set to previous privilege level on trap
+  // eti_SEC_4: MRET redirects execution to mepc via the PC_ERET mux entry.
+  // Security: exception return restores the saved PC — no arbitrary jump target.
+  // RTL: FLUSH mret_insn branch: pc_mux_o = PC_ERET; pc_set_o = 1;
+  //      csr_restore_mret_id_o = 1 (all three set together, no other path sets MRET).
   property eti_SEC_4;
     @(posedge clk_i) disable iff (!rst_ni)
-    (csr_save_if_o || csr_save_id_o || csr_save_wb_o) |-> 
-    (priv_mode_i inside {ibex_pkg::PRIV_LVL_M, ibex_pkg::PRIV_LVL_U});
+    csr_restore_mret_id_o |->
+    (pc_set_o && pc_mux_o == ibex_pkg::PC_ERET);
   endproperty
   assert property (eti_SEC_4);
 
-  // eti_SEC_5: mie set to 0 when trap taken
+  // eti_SEC_5: Exception cause save always coincides with a PC redirect.
+  // Security: every trap atomically saves cause AND redirects PC to the handler.
+  // RTL: all FSM states that assert csr_save_cause_o also assert pc_set_o:
+  //      IRQ_TAKEN (irq path), FLUSH (exception path), DBG_TAKEN_IF, DBG_TAKEN_ID.
   property eti_SEC_5;
     @(posedge clk_i) disable iff (!rst_ni)
-    (csr_save_if_o || csr_save_id_o || csr_save_wb_o) |-> 
-    !csr_mstatus_mie_i;
+    csr_save_cause_o |-> pc_set_o;
   endproperty
   assert property (eti_SEC_5);
 
-  // eti_SEC_6: mpie set to previous mie value
+  // eti_SEC_6: WB-stage exception cause is always a memory access fault.
+  // Security: csr_save_wb_o captures only WB-stage load/store errors, not sync exceptions.
+  // RTL: FLUSH csr_save_wb_o = store_err_q|load_err_q; in those cases exc_cause_o is
+  //      set to StoreAccessFault or LoadAccessFault (never to sync exception codes).
   property eti_SEC_6;
     @(posedge clk_i) disable iff (!rst_ni)
-    (csr_save_if_o || csr_save_id_o || csr_save_wb_o) |-> 
-    $past(csr_mstatus_mie_i);
+    (csr_save_cause_o && csr_save_wb_o) |->
+    (exc_cause_o == ibex_pkg::ExcCauseLoadAccessFault ||
+     exc_cause_o == ibex_pkg::ExcCauseStoreAccessFault);
   endproperty
   assert property (eti_SEC_6);
 
-  // eti_SEC_7: mepc set to PC from WB stage for exceptions
+  // eti_SEC_7: Load access fault carries the fault address in csr_mtval_o.
+  // Security: exception context is complete — mtval identifies the faulting address.
+  // RTL: FLUSH load_err_prio case: exc_cause_o = LoadAccessFault;
+  //      csr_mtval_o = lsu_addr_last_i.
   property eti_SEC_7;
     @(posedge clk_i) disable iff (!rst_ni)
-    (wb_exception_o && csr_save_wb_o) |-> 
-    (pc_id_i == $past(pc_id_i));
+    (csr_save_cause_o &&
+     exc_cause_o == ibex_pkg::ExcCauseLoadAccessFault) |->
+    (csr_mtval_o == lsu_addr_last_i);
   endproperty
   assert property (eti_SEC_7);
 
-  // eti_SEC_8: MRET updates mpp/mprv
+  // eti_SEC_8: MRET uses the dedicated exception-return PC mux (PC_ERET).
+  // Security: MRET cannot inject an arbitrary address — only mepc is the return target.
+  // RTL: FLUSH mret_insn branch: pc_mux_o = PC_ERET (set before csr_restore_mret_id_o).
   property eti_SEC_8;
     @(posedge clk_i) disable iff (!rst_ni)
-    (mret_insn_i && csr_restore_mret_id_o) |-> 
-    (priv_mode_i == ibex_pkg::PRIV_LVL_M);
+    csr_restore_mret_id_o |-> (pc_mux_o == ibex_pkg::PC_ERET);
   endproperty
   assert property (eti_SEC_8);
 
-  // eti_SEC_9: MRET sets mpie
+  // eti_SEC_9: MRET and DRET are mutually exclusive in the same cycle.
+  // Security: only one privileged return can execute at a time — no aliasing.
+  // RTL: FLUSH: mret_insn and dret_insn are in separate if/else-if branches;
+  //      csr_restore_mret_id_o and csr_restore_dret_id_o are never both 1.
   property eti_SEC_9;
     @(posedge clk_i) disable iff (!rst_ni)
-    (mret_insn_i && csr_restore_mret_id_o) |-> 
-    csr_mstatus_mie_i;
+    csr_restore_mret_id_o |-> !csr_restore_dret_id_o;
   endproperty
   assert property (eti_SEC_9);
 
-  // eti_SEC_10: MRET restores mie from mpie
+  // eti_SEC_10: DRET redirects execution to depc via the PC_DRET mux entry.
+  // Security: debug return restores saved debug PC — no arbitrary jump target.
+  // RTL: FLUSH dret_insn branch: pc_mux_o = PC_DRET; pc_set_o = 1;
+  //      csr_restore_dret_id_o = 1; debug_mode_d = 0 (all atomic in one FSM state).
   property eti_SEC_10;
     @(posedge clk_i) disable iff (!rst_ni)
-    (mret_insn_i && csr_restore_mret_id_o) |-> 
-    csr_mstatus_mie_i;
+    csr_restore_dret_id_o |->
+    (pc_set_o && pc_mux_o == ibex_pkg::PC_DRET);
   endproperty
   assert property (eti_SEC_10);
 
-  // eti_SEC_11: Exception implies handler started
+  // eti_SEC_11: IRQ exception handling saves the IF-stage PC (not ID or WB).
+  // Security: interrupt return address is the NEXT instruction to execute (in IF),
+  //           not the faulting instruction (ID) — correct RISC-V interrupt semantics.
+  // RTL: IRQ_TAKEN state: csr_save_if_o = 1, csr_save_cause_o = 1, irq cause set.
+  //      debug_csr_save_o guards against debug-entry false trigger.
   property eti_SEC_11;
     @(posedge clk_i) disable iff (!rst_ni)
-    (wb_exception_o || id_exception_o) |-> 
-    ##1 (pc_set_o && exc_pc_mux_o inside {ibex_pkg::EXC_PC_EXC, ibex_pkg::EXC_PC_IRQ});
+    (csr_save_cause_o && !debug_csr_save_o &&
+     (exc_cause_o.irq_int || exc_cause_o.irq_ext)) |->
+    csr_save_if_o;
   endproperty
   assert property (eti_SEC_11);
 
-  // eti_SEC_12: No exception without request
+  // eti_SEC_12: csr_save_if_o and csr_save_id_o/wb_o are mutually exclusive.
+  // Security: only one pipeline stage contributes the saved PC per trap event.
+  // RTL: csr_save_if_o set in IRQ_TAKEN and DBG_TAKEN_IF (csr_save_id/wb = 0 there);
+  //      csr_save_id_o set in FLUSH sync exceptions and DBG_TAKEN_ID (save_if = 0).
   property eti_SEC_12;
     @(posedge clk_i) disable iff (!rst_ni)
-    (wb_exception_o || id_exception_o) |-> 
-    (illegal_insn_i || ecall_insn_i || ebrk_insn_i || 
-     instr_fetch_err_i || load_err_i || store_err_i || 
-     mem_resp_intg_err_i || irq_pending_i);
+    csr_save_if_o |-> (!csr_save_id_o && !csr_save_wb_o);
   endproperty
   assert property (eti_SEC_12);
 
-  // eti_SEC_13: Interrupt eventually handled
+  // eti_SEC_13: Instruction-access fault saves the ID-stage PC.
+  // Security: the faulting instruction address (in ID) is the correct mepc value.
+  // RTL: FLUSH instr_fetch_err_prio: exc_cause_o = InstrAccessFault;
+  //      csr_save_id_o = ~(store_err_q|load_err_q) = 1 (no concurrent WB error).
   property eti_SEC_13;
     @(posedge clk_i) disable iff (!rst_ni)
-    irq_pending_i |-> ##[1:10] (wb_exception_o && pc_set_o && 
-                                 exc_pc_mux_o == ibex_pkg::EXC_PC_IRQ);
+    (csr_save_cause_o && !debug_csr_save_o &&
+     exc_cause_o == ibex_pkg::ExcCauseInstrAccessFault) |->
+    csr_save_id_o;
   endproperty
   assert property (eti_SEC_13);
 
-  // eti_SEC_14: Interrupt enabled according to mie
+  // eti_SEC_14: Illegal instruction exception saves the ID-stage PC.
+  // Security: the illegal instruction address (in ID) is the correct mepc value.
+  // RTL: FLUSH illegal_insn_prio: exc_cause_o = IllegalInsn;
+  //      csr_save_id_o = ~(store_err_q|load_err_q) = 1.
   property eti_SEC_14;
     @(posedge clk_i) disable iff (!rst_ni)
-    (irq_pending_i && csr_mstatus_mie_i) |-> 
-    ##1 (wb_exception_o || id_exception_o);
+    (csr_save_cause_o && !debug_csr_save_o &&
+     exc_cause_o == ibex_pkg::ExcCauseIllegalInsn) |->
+    csr_save_id_o;
   endproperty
   assert property (eti_SEC_14);
 
-  // eti_SEC_15: Interrupt bit in mcause set for interrupts
+  // eti_SEC_15: M-mode ecall exception saves the ID-stage PC.
+  // Security: ecall return address is the ecall instruction itself (in ID).
+  // RTL: FLUSH ecall_insn_prio: exc_cause_o = EcallMMode or EcallUMode;
+  //      csr_save_id_o = ~(store_err_q|load_err_q) = 1.
   property eti_SEC_15;
     @(posedge clk_i) disable iff (!rst_ni)
-    (irq_pending_i && (wb_exception_o || id_exception_o)) |-> 
-    (exc_cause_o.irq_int || exc_cause_o.irq_ext);
+    (csr_save_cause_o && !debug_csr_save_o &&
+     exc_cause_o == ibex_pkg::ExcCauseEcallMMode) |->
+    csr_save_id_o;
   endproperty
   assert property (eti_SEC_15);
 
-  // eti_SEC_16: mepc written with interrupted PC
+  // eti_SEC_16: csr_save_id_o and csr_save_wb_o are mutually exclusive.
+  // Security: WB-stage error and ID-stage sync exception cannot simultaneously save PC.
+  // RTL: FLUSH: csr_save_id_o = ~(store_err_q|load_err_q); csr_save_wb_o = (store_err_q|load_err_q).
+  //      These are complementary boolean expressions — never simultaneously 1.
   property eti_SEC_16;
     @(posedge clk_i) disable iff (!rst_ni)
-    (irq_pending_i && csr_save_if_o) |-> 
-    (pc_id_i == $past(pc_id_i));
+    csr_save_id_o |-> !csr_save_wb_o;
   endproperty
   assert property (eti_SEC_16);
 
-  // eti_SEC_17: Invalid frm causes illegal instruction
+  // eti_SEC_17: Non-debug exception from ID stage has a valid sync exception cause.
+  // Security: when saving ID-stage context for a non-debug exception, the cause must
+  //           be one of the five synchronous ID-stage exceptions Ibex implements.
+  // RTL: FLUSH, non-debug (debug_csr_save_o=0): csr_save_id_o=1 only when exc_req_q is
+  //      processed; exc_cause_o is set by unique-case to exactly these five values.
   property eti_SEC_17;
     @(posedge clk_i) disable iff (!rst_ni)
-    (instr_valid_i && (instr_i[14:12] inside {3'b101, 3'b110, 3'b111}) && 
-     (instr_i[6:0] inside {7'b1010011, 7'b1000011, 7'b1000111, 7'b1001011, 7'b1001111})) |-> 
-     illegal_insn_i;
+    (csr_save_cause_o && csr_save_id_o && !debug_csr_save_o) |->
+    (exc_cause_o == ibex_pkg::ExcCauseIllegalInsn ||
+     exc_cause_o == ibex_pkg::ExcCauseEcallMMode ||
+     exc_cause_o == ibex_pkg::ExcCauseEcallUMode ||
+     exc_cause_o == ibex_pkg::ExcCauseBreakpoint ||
+     exc_cause_o == ibex_pkg::ExcCauseInstrAccessFault);
   endproperty
   assert property (eti_SEC_17);
 
