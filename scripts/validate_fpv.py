@@ -241,17 +241,16 @@ def _run_jg(jg_bin: str, tcl_path: Path) -> tuple:
     proj_dir = Path(tempfile.mkdtemp(prefix="ats_jg_"))
     try:
         cmd = [jg_bin, "-batch", "-proj", str(proj_dir), "-tcl", str(tcl_path)]
-        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                             cwd=ROOT, timeout=600)
+        try:
+            res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                 cwd=ROOT, timeout=600)
+        except subprocess.TimeoutExpired:
+            return 1, "JasperGold timed out after 600s"
+        stdout = res.stdout.decode("utf-8", errors="replace") if isinstance(res.stdout, bytes) else (res.stdout or "")
+        stderr = res.stderr.decode("utf-8", errors="replace") if isinstance(res.stderr, bytes) else (res.stderr or "")
+        return res.returncode, (stdout + "\n" + stderr).strip()
     finally:
         _shutil.rmtree(proj_dir, ignore_errors=True)
-        res.stdout = res.stdout.decode("utf-8", errors="replace") if isinstance(res.stdout, bytes) else (res.stdout or "")
-        res.stderr = res.stderr.decode("utf-8", errors="replace") if isinstance(res.stderr, bytes) else (res.stderr or "")
-    except subprocess.TimeoutExpired:
-        return 1, "JasperGold timed out after 600s"
-
-    out = (res.stdout + "\n" + res.stderr).strip()
-    return res.returncode, out
 
 
 def _fpv_passed(baseline: dict, vacuity: dict) -> tuple:
