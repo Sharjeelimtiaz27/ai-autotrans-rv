@@ -103,34 +103,78 @@ TRANSLATION APPROACH RULES:
         - Example: "CSR write blocked when locked" → check that the relevant
           output signal is unchanged when the lock condition is active
 
+JasperGold FPV RULES — CRITICAL — VIOLATIONS CAUSE FALSE COUNTER-EXAMPLES:
+  R10. ANTECEDENT SIGNAL RULE (most important rule in this section):
+       Use ONLY DUT OUTPUT signals in property antecedents.
+       DUT INPUT signals are FREE VARIABLES in JasperGold bind FPV:
+       JasperGold can drive any input to any value to falsify a property.
+       An antecedent on a free input gives a trivial counter-example even
+       on correct RTL.
+         WRONG:  rf_we_i |-> rf_waddr_o == rf_waddr_i    (rf_we_i is INPUT → free)
+         CORRECT: rf_we_wb_o |-> rf_waddr_wb_o == rf_waddr_id_i  (rf_we_wb_o is OUTPUT)
+       How to identify antecedent candidates: look at the OUTPUT PORTS list only.
+       Inputs in consequents are fine (comparing an output to an input is common).
+
+  R11. WRITEBACK STAGE = 0 (Ibex default configuration):
+       Ibex is built with WritebackStage=0 unless explicitly overridden.
+       This generates ibex_wb_stage as a combinational pass-through AND
+       forces these signals to CONSTANT ZERO in ibex_controller FLUSH state:
+         csr_save_id_o  = 1'b0  always (g_no_writeback_mepc_save active)
+         csr_save_wb_o  = 1'b0  always (g_no_writeback_mepc_save active)
+         wb_exception_o = 1'b0  always (g_no_wb_exceptions active)
+       DO NOT use csr_save_id_o, csr_save_wb_o, wb_exception_o as antecedents
+       (they never fire → vacuous) or as the meaningful part of a consequent
+       (they are always 0 → any assertion using them as "guard" is wrong).
+       Use csr_save_cause_o or csr_restore_mret/dret_id_o instead for
+       exception-related control flow.
+
+  R12. BIND SCOPE — PORT OWNERSHIP:
+       The bind file targets exactly ONE DUT module ({{MODULE_NAME}}).
+       Input ports of a sub-module instantiated INSIDE {{MODULE_NAME}} are
+       NOT ports of {{MODULE_NAME}} itself. They appear in AVAILABLE SIGNALS
+       as inputs but are unconnected in the bind → they become free variables.
+       Example: if {{MODULE_NAME}} instantiates ibex_ex_block, then
+       alu_operator_i, alu_operand_a_i, alu_operand_b_i are ibex_ex_block
+       INPUTS — they are NOT ports of {{MODULE_NAME}}.
+       Rule: only use signals that appear in the OUTPUT PORTS section as
+       antecedent triggers. Inputs from sub-modules are free variables.
+
+  R13. BOOT VECTOR TIMING:
+       When checking the post-reset boot sequence:
+         $rose(rst_ni) |-> (pc_set_o && pc_mux_o == PC_BOOT)  ← CORRECT (same cycle)
+         $rose(rst_ni) |-> ##1 (pc_set_o && pc_mux_o == PC_BOOT)  ← WRONG
+       At the posedge where rst_ni first rises, JasperGold sees the UPDATED
+       register values (BOOT_SET FSM state). Adding ##1 checks FIRST_FETCH
+       where pc_set_o = 0, causing a false counter-example.
+
 SVA SYNTAX RULES:
-  R10. Every property block: @(posedge {{CLOCK}}) disable iff (!{{RESET}})
-  R11. Temporal delay: use ##N (N >= 1). Never use #delay.
-  R12. Previous cycle value: use $past(signal) or $past(signal, N).
-  R13. Implication: use |-> (overlapping) or |=> (non-overlapping) correctly.
+  R14. Every property block: @(posedge {{CLOCK}}) disable iff (!{{RESET}})
+  R15. Temporal delay: use ##N (N >= 1). Never use #delay.
+  R16. Previous cycle value: use $past(signal) or $past(signal, N).
+  R17. Implication: use |-> (overlapping) or |=> (non-overlapping) correctly.
        |->  : consequent starts at same clock cycle as antecedent end
        |=>  : consequent starts one cycle after antecedent end
-  R14. Every property must have both a named property block AND a named assert:
+  R18. Every property must have both a named property block AND a named assert:
          property PROP_NAME; @(posedge {{CLOCK}}) disable iff (!{{RESET}})
            <antecedent> |-> <consequent>;
          endproperty
          assert property (PROP_NAME);
-  R15. Property names: {{MODULE_SHORT}}_SEC_<N> where N is a sequential integer.
-  R16. Antecedent must be reachable in normal (non-Trojan) operation.
+  R19. Property names: {{MODULE_SHORT}}_SEC_<N> where N is a sequential integer.
+  R20. Antecedent must be reachable in normal (non-Trojan) operation.
        If the antecedent can never fire on clean RTL, rewrite it.
-  R17. No $display, $error, or simulation-only constructs inside properties.
+  R21. No $display, $error, or simulation-only constructs inside properties.
 
 BIND FILE PORT RULES:
-  R18. ALL ports in the assertion module must be declared as INPUT.
+  R22. ALL ports in the assertion module must be declared as INPUT.
        This includes signals that are outputs of the DUT.
        The assertion module only observes signals — it never drives them.
        Driving a DUT output from the assertion module causes a driver conflict.
-  R19. Clock and reset must be in the port list as input.
-  R20. Bind statement goes OUTSIDE and AFTER the assertion module:
+  R23. Clock and reset must be in the port list as input.
+  R24. Bind statement goes OUTSIDE and AFTER the assertion module:
          bind {{MODULE_NAME}} {{MODULE_NAME}}_assertions u_{{MODULE_SHORT}}_assert (.*);
-  R21. The (.*) wildcard connects all ports by name — valid only if port names
+  R25. The (.*) wildcard connects all ports by name — valid only if port names
        in the assertion module exactly match DUT port names.
-  R22. The assertion module declaration MUST include 'import ibex_pkg::*;' so that
+  R26. The assertion module declaration MUST include 'import ibex_pkg::*;' so that
        enum constants (PRIV_LVL_M, CSR_OP_WRITE, etc.) and types are in scope
        without requiring the ibex_pkg:: prefix in every assertion:
          module {{MODULE_NAME}}_assertions
@@ -153,6 +197,14 @@ Before writing output, mentally verify:
   [ ] Bind statement is outside the module
   [ ] JSON has exactly {{NS31A_TOTAL_GROUPS}} entries, one per assertion group
   [ ] Every assertion group produced at least one SVA property
+  FPV-SPECIFIC CHECKS (R10-R13):
+  [ ] Every property antecedent uses only DUT OUTPUT signals (from OUTPUT PORTS)
+      — NOT DUT input signals which are free variables in JasperGold bind FPV
+  [ ] No property antecedent uses: csr_save_id_o, csr_save_wb_o, wb_exception_o
+      (these are always 0 in Ibex WritebackStage=0 — antecedent would never fire)
+  [ ] No property checks signals from sub-modules of {{MODULE_NAME}} as antecedents
+      (sub-module inputs are not connected through the bind — they are free variables)
+  [ ] Boot-vector post-reset check uses same-cycle (no ##1 after $rose(rst_ni))
 
 ================================================================================
 REQUIRED OUTPUT — PRODUCE EXACTLY TWO SECTIONS IN THIS ORDER
